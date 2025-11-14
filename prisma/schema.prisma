@@ -60,9 +60,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  favorites     Product[]   @relation("UserFavorites")
+  favorites     Product[]      @relation("UserFavorites")
   orders        Order[]
   performedLogs EventLog[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
 }
@@ -165,4 +166,32 @@ model EventLog {
   user User? @relation(fields: [performedBy], references: [id])
 
   @@map("event_logs")
+}
+
+model RefreshToken {
+  id           String   @id @default(uuid())
+  hashedToken  String   @unique
+  userId       String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  isRevoked    Boolean  @default(false)
+
+  // Token Family for replay attack prevention
+  tokenFamily   String
+  parentTokenId String?
+
+  // Device & Session tracking
+  deviceName String?
+  deviceType String?
+  ipAddress  String?
+  userAgent  String?
+  lastUsedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([tokenFamily])
+  @@index([userId, isRevoked])
 }

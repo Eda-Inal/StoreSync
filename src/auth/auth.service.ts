@@ -4,19 +4,31 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { RefreshTokenService } from './refresh-token.service';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dtos/login.dto';
 import { RegisterDto } from './dtos/register.dto';
+import type { SignOptions } from 'jsonwebtoken';
+
+interface DeviceInfo {
+  deviceName?: string;
+  deviceType?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private refreshTokenService: RefreshTokenService,
+    private configService: ConfigService,
   ) {}
 
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto, deviceInfo?: DeviceInfo) {
     const { email, password, name } = registerDto;
 
     // Check if user already exists
@@ -40,20 +52,28 @@ export class AuthService {
       },
     });
 
-    // Generate token
-    const token = await this.generateToken(user.id, user.email);
+    // Generate both tokens
+    const accessToken = await this.generateAccessToken(user.id, user.email);
+    const { token: refreshToken } =
+      await this.refreshTokenService.generateRefreshToken(
+        user.id,
+        deviceInfo,
+      );
 
     return {
-      access_token: token,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_in: 900, // 15 minutes in seconds
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: user.role,
       },
     };
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, deviceInfo?: DeviceInfo) {
     const { email, password } = loginDto;
 
     // Find user
@@ -75,15 +95,23 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Generate token
-    const token = await this.generateToken(user.id, user.email);
+    // Generate both tokens
+    const accessToken = await this.generateAccessToken(user.id, user.email);
+    const { token: refreshToken } =
+      await this.refreshTokenService.generateRefreshToken(
+        user.id,
+        deviceInfo,
+      );
 
     return {
-      access_token: token,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_in: 900, // 15 minutes in seconds
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: user.role,
       },
     };
   }
@@ -112,10 +140,18 @@ export class AuthService {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
 
-  private async generateToken(userId: string, email: string): Promise<string> {
-    const payload = { sub: userId, email };
-    return this.jwtService.signAsync(payload);
+  async generateAccessToken(userId: string, email: string): Promise<string> {
+    const payload = { sub: userId, email, type: 'access' };
+    const secret =
+      this.configService.get<string>('jwt.accessTokenSecret') ??
+      'default-access-secret';
+    const expiresIn =
+      (this.configService.get<string>('jwt.accessTokenExpiration') ??
+        '15m') as SignOptions['expiresIn'];
+
+    return this.jwtService.signAsync(payload, { secret, expiresIn });
   }
+
 }
 
 
