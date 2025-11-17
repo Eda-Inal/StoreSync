@@ -14,6 +14,8 @@ describe('AuthService.register - user existence + creation', () => {
     };
   };
   let refreshTokenService: RefreshTokenService;
+  let configService: ConfigService;
+  let jwtService: JwtService;
   let comparePasswordsSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -28,11 +30,11 @@ describe('AuthService.register - user existence + creation', () => {
       generateRefreshToken: jest.fn(),
     } as unknown as RefreshTokenService;
 
-    const jwtService = {
+    jwtService = {
       signAsync: jest.fn(),
     } as unknown as JwtService;
 
-    const configService = {
+    configService = {
       get: jest.fn(),
     } as unknown as ConfigService;
 
@@ -50,9 +52,7 @@ describe('AuthService.register - user existence + creation', () => {
     comparePasswordsSpy = jest
       .spyOn(authService as any, 'comparePasswords')
       .mockResolvedValue(true);
-    jest
-      .spyOn(authService, 'generateAccessToken')
-      .mockResolvedValue('access-token');
+    (jwtService.signAsync as jest.Mock).mockResolvedValue('access-token');
     (refreshTokenService.generateRefreshToken as jest.Mock).mockResolvedValue({
       token: 'refresh-token',
     });
@@ -189,6 +189,40 @@ describe('AuthService.register - user existence + creation', () => {
         where: { email: loginDto.email },
       });
       expect(refreshTokenService.generateRefreshToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('AuthService.generateAccessToken', () => {
+    it('uses configured secret and expiration when provided', async () => {
+      (configService.get as jest.Mock).mockImplementation((key: string) => {
+        if (key === 'jwt.accessTokenSecret') return 'custom-secret';
+        if (key === 'jwt.accessTokenExpiration') return '30m';
+        return undefined;
+      });
+      (jwtService.signAsync as jest.Mock).mockResolvedValue('signed-token');
+
+      const result = await authService.generateAccessToken(
+        'user-123',
+        'user@example.com',
+      );
+
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        { sub: 'user-123', email: 'user@example.com', type: 'access' },
+        { secret: 'custom-secret', expiresIn: '30m' },
+      );
+      expect(result).toBe('signed-token');
+    });
+
+    it('falls back to default secret and expiration when config missing', async () => {
+      (configService.get as jest.Mock).mockReturnValue(undefined);
+      (jwtService.signAsync as jest.Mock).mockResolvedValue('default-token');
+
+      await authService.generateAccessToken('user-1', 'fallback@example.com');
+
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        { sub: 'user-1', email: 'fallback@example.com', type: 'access' },
+        { secret: 'default-access-secret', expiresIn: '15m' },
+      );
     });
   });
 });
