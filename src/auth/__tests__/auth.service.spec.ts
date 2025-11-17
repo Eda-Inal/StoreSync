@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from '../auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RefreshTokenService } from '../refresh-token.service';
@@ -14,6 +14,7 @@ describe('AuthService.register - user existence + creation', () => {
     };
   };
   let refreshTokenService: RefreshTokenService;
+  let comparePasswordsSpy: jest.SpyInstance;
 
   beforeEach(() => {
     prismaMock = {
@@ -46,6 +47,9 @@ describe('AuthService.register - user existence + creation', () => {
     jest
       .spyOn(authService as any, 'hashPassword')
       .mockResolvedValue('hashed-password');
+    comparePasswordsSpy = jest
+      .spyOn(authService as any, 'comparePasswords')
+      .mockResolvedValue(true);
     jest
       .spyOn(authService, 'generateAccessToken')
       .mockResolvedValue('access-token');
@@ -117,5 +121,75 @@ describe('AuthService.register - user existence + creation', () => {
     });
   });
 
+  describe('AuthService.login - user lookup + password validation', () => {
+    it('returns tokens when user exists and password matches', async () => {
+      const loginDto = { email: 'user@example.com', password: 'password123' };
+      const foundUser = {
+        id: 'user-123',
+        email: loginDto.email,
+        password: 'hashed-password',
+        name: 'Tester',
+        role: 'USER',
+      };
+      prismaMock.user.findUnique.mockResolvedValue(foundUser);
+
+      const result = await authService.login(loginDto, { deviceType: 'web' });
+
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: loginDto.email },
+      });
+      expect(comparePasswordsSpy).toHaveBeenCalledWith(
+        loginDto.password,
+        foundUser.password,
+      );
+      expect(refreshTokenService.generateRefreshToken).toHaveBeenCalledWith(
+        foundUser.id,
+        { deviceType: 'web' },
+      );
+      expect(result).toEqual({
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+        expires_in: 900,
+        user: {
+          id: foundUser.id,
+          email: foundUser.email,
+          name: foundUser.name,
+          role: foundUser.role,
+        },
+      });
+    });
+
+    it('throws UnauthorizedException when user is not found', async () => {
+      const loginDto = { email: 'missing@example.com', password: 'password123' };
+      prismaMock.user.findUnique.mockResolvedValue(null);
+
+      await expect(authService.login(loginDto)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: loginDto.email },
+      });
+      expect(comparePasswordsSpy).not.toHaveBeenCalled();
+    });
+
+    it('throws UnauthorizedException when password does not match', async () => {
+      const loginDto = { email: 'user@example.com', password: 'wrongpass' };
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user-123',
+        email: loginDto.email,
+        password: 'hashed-password',
+      });
+      comparePasswordsSpy.mockResolvedValueOnce(false);
+
+      await expect(authService.login(loginDto)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: loginDto.email },
+      });
+      expect(refreshTokenService.generateRefreshToken).not.toHaveBeenCalled();
+    });
+  });
 });
 
