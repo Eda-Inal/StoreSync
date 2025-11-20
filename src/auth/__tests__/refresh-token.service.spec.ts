@@ -256,6 +256,64 @@ describe('RefreshTokenService', () => {
       expect(prismaMock.refreshToken.update).not.toHaveBeenCalled();
     });
   });
+
+  describe('rotateRefreshToken', () => {
+    let validateSpy: jest.SpyInstance;
+    let revokeSpy: jest.SpyInstance;
+    let generateSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      validateSpy = jest
+        .spyOn(service, 'validateRefreshToken')
+        .mockResolvedValue({
+          userId: 'user-1',
+          tokenId: 'token-old',
+          tokenFamily: 'family-1',
+          user: { id: 'user-1', email: 'user@example.com' } as any,
+        });
+      revokeSpy = jest
+        .spyOn(service, 'revokeRefreshToken')
+        .mockResolvedValue(undefined);
+      generateSpy = jest
+        .spyOn(service, 'generateRefreshToken')
+        .mockResolvedValue({
+          token: 'new-refresh-token',
+          tokenFamily: 'family-1',
+        });
+    });
+
+    it('validates, revokes, and issues a rotated token in same family', async () => {
+      const deviceInfo = { deviceType: 'mobile' };
+
+      const result = await service.rotateRefreshToken('old-token', deviceInfo);
+
+      expect(validateSpy).toHaveBeenCalledWith('old-token');
+      expect(revokeSpy).toHaveBeenCalledWith('old-token');
+      expect(generateSpy).toHaveBeenCalledWith(
+        'user-1',
+        deviceInfo,
+        'family-1',
+        'token-old',
+      );
+      expect(result).toEqual({
+        token: 'new-refresh-token',
+        tokenFamily: 'family-1',
+        userId: 'user-1',
+        user: { id: 'user-1', email: 'user@example.com' },
+      });
+    });
+
+    it('propagates errors from validation step', async () => {
+      validateSpy.mockRejectedValueOnce(new Error('bad token'));
+
+      await expect(
+        service.rotateRefreshToken('invalid-token'),
+      ).rejects.toThrow('bad token');
+
+      expect(revokeSpy).not.toHaveBeenCalled();
+      expect(generateSpy).not.toHaveBeenCalled();
+    });
+  });
 });
 
 
