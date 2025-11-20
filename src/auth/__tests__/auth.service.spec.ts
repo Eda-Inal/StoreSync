@@ -225,5 +225,35 @@ describe('AuthService.register - user existence + creation', () => {
       );
     });
   });
+
+  describe('AuthService.validateUser', () => {
+    it('returns the user when Prisma finds a matching id', async () => {
+      const user = {
+        id: 'user-abc',
+        email: 'abc@example.com',
+        name: 'User ABC',
+      };
+      prismaMock.user.findUnique.mockResolvedValue(user);
+
+      const result = await authService.validateUser('user-abc');
+
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-abc' },
+      });
+      expect(result).toBe(user);
+    });
+
+    it('throws UnauthorizedException when user is missing', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+
+      await expect(authService.validateUser('missing-id')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'missing-id' },
+      });
+    });
+  });
 });
 
