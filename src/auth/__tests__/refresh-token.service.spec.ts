@@ -314,6 +314,45 @@ describe('RefreshTokenService', () => {
       expect(generateSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe('revocation helpers', () => {
+    it('revokeRefreshToken hashes incoming token and updates matching records', async () => {
+      const updateManySpy = prismaMock.refreshToken.updateMany;
+      hashSpy.mockReturnValueOnce('hashed-old');
+
+      await service.revokeRefreshToken('plain-token');
+
+      expect(hashSpy).toHaveBeenCalledWith('plain-token');
+      expect(updateManySpy).toHaveBeenCalledWith({
+        where: { hashedToken: 'hashed-old' },
+        data: { isRevoked: true },
+      });
+    });
+
+    it('revokeTokenFamily toggles all tokens in family and logs count', async () => {
+      const updateManySpy = prismaMock.refreshToken.updateMany;
+      updateManySpy.mockResolvedValue({ count: 3 });
+
+      await service.revokeTokenFamily('family-123');
+
+      expect(updateManySpy).toHaveBeenCalledWith({
+        where: { tokenFamily: 'family-123' },
+        data: { isRevoked: true },
+      });
+    });
+
+    it('revokeAllUserTokens revokes every active token for a user', async () => {
+      const updateManySpy = prismaMock.refreshToken.updateMany;
+      updateManySpy.mockResolvedValue({ count: 5 });
+
+      await service.revokeAllUserTokens('user-42');
+
+      expect(updateManySpy).toHaveBeenCalledWith({
+        where: { userId: 'user-42' },
+        data: { isRevoked: true },
+      });
+    });
+  });
 });
 
 
