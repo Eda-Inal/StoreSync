@@ -9,6 +9,7 @@ describe('RefreshTokenService', () => {
     refreshToken: {
       create: jest.Mock;
       findUnique: jest.Mock;
+      findMany: jest.Mock;
       update: jest.Mock;
       updateMany: jest.Mock;
       deleteMany: jest.Mock;
@@ -23,6 +24,7 @@ describe('RefreshTokenService', () => {
       refreshToken: {
         create: jest.fn(),
         findUnique: jest.fn(),
+        findMany: jest.fn(),
         update: jest.fn(),
         updateMany: jest.fn(),
         deleteMany: jest.fn(),
@@ -351,6 +353,50 @@ describe('RefreshTokenService', () => {
         where: { userId: 'user-42' },
         data: { isRevoked: true },
       });
+    });
+  });
+
+  describe('getUserSessions', () => {
+    it('returns active, unrevoked sessions ordered by lastUsedAt desc', async () => {
+      const sessions = [
+        {
+          id: 'token-2',
+          deviceName: 'MacBook',
+          deviceType: 'desktop',
+          ipAddress: '10.0.0.2',
+          createdAt: new Date(),
+          lastUsedAt: new Date('2025-01-02T12:00:00Z'),
+        },
+        {
+          id: 'token-1',
+          deviceName: 'iPhone',
+          deviceType: 'mobile',
+          ipAddress: '10.0.0.1',
+          createdAt: new Date(),
+          lastUsedAt: new Date('2025-01-02T08:00:00Z'),
+        },
+      ];
+      prismaMock.refreshToken.findMany.mockResolvedValue(sessions);
+
+      const result = await service.getUserSessions('user-99');
+
+      expect(prismaMock.refreshToken.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-99',
+          isRevoked: false,
+          expiresAt: { gt: expect.any(Date) },
+        },
+        select: {
+          id: true,
+          deviceName: true,
+          deviceType: true,
+          ipAddress: true,
+          createdAt: true,
+          lastUsedAt: true,
+        },
+        orderBy: { lastUsedAt: 'desc' },
+      });
+      expect(result).toBe(sessions);
     });
   });
 });
