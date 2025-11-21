@@ -87,4 +87,12 @@ export class UserService {
         const { password, ...userWithoutPassword } = updateUser;
         return userWithoutPassword;
     }
+
+    async deleteService(id:string): Promise<void> {
+        const user = await this.prisma.user.findUnique({ where: { id } });
+        if(!user){
+            throw new NotFoundException('User not found');
+        }
+        const deleteUser = await this.prisma.user.delete({where: {id}});
+    }
 }

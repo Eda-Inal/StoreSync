@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Put, ValidationPipe, Param } from "@nestjs/common";
+import { Controller, Post, Get, Body, Put, Delete, ValidationPipe, Param } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { CreateUserDto } from "./dtos/create-user.dto";
 import { UserResponseDto } from "./dtos/user-response.dto";
@@ -27,5 +27,10 @@ export class UserController {
     @Put(':id')
     update(@Param('id') id: string, @Body(new ValidationPipe()) updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
         return this.userService.updateService(id, updateUserDto);
+    }
+
+    @Delete(':id')
+    delete(@Param('id') id: string): Promise<void> {
+        return this.userService.deleteService(id);
     }
 }
