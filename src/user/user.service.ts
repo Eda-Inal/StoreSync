@@ -3,25 +3,35 @@ import {
 } from "@nestjs/common";
 import { CreateUserDto } from "./dtos/create-user.dto";
 import { UserResponseDto } from "./dtos/user-response.dto";
-import { v4 as uuidv4 } from 'uuid';
+import { PrismaService } from "src/prisma/prisma.service";
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
-    private users: UserResponseDto[] = [];
-    create(createUserDto: CreateUserDto) {
-        const newUser = {
-            id: uuidv4(), ...createUserDto, role: "USER", createdAt: new Date(),
-            updatedAt: new Date()
-        };
-        this.users.push(newUser);
+
+constructor(private readonly prisma: PrismaService) {}
+
+
+   async create(createUserDto: CreateUserDto) {
+        const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+
+   
+       const createdUser = await this.prisma.user.create({
+            data: {
+             name : createUserDto.name,
+             email : createUserDto.email,
+             password : hashedPassword,
+             role : "USER",
+            }
+        })
 
         const userResponse: UserResponseDto = {
-            id: newUser.id,
-            name: newUser.name,
-            email: newUser.email,
-            role: newUser.role,
-            createdAt: newUser.createdAt,
-            updatedAt: newUser.updatedAt,
+            id: createdUser.id,
+            name: createdUser.name,
+            email: createdUser.email,
+            role: createdUser.role,
+            createdAt: createdUser.createdAt,
+            updatedAt: createdUser.updatedAt,
         }
         return userResponse;
     }

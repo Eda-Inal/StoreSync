@@ -8,8 +8,7 @@ export class UserController {
     constructor(private readonly userService: UserService) {}
 
     @Post()
-    create(@Body(new ValidationPipe()) createUserDto: CreateUserDto): UserResponseDto {
+    create(@Body(new ValidationPipe()) createUserDto: CreateUserDto) : Promise<UserResponseDto> {
      return this.userService.create(createUserDto);  
- 
     }
 }
