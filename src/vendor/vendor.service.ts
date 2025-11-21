@@ -37,5 +37,34 @@ export class VendorService {
             throw new InternalServerErrorException('Could not create vendor');
         }
     }
+
+    async findAll(): Promise<ResponseVendorDto[]> {
+        const vendors = await this.prisma.vendor.findMany();
+        return vendors.map(vendor => ({
+            id: vendor.id,
+            name: vendor.name,
+            email: vendor.email,
+            role: vendor.role,
+            createdAt: vendor.createdAt,
+            updatedAt: vendor.updatedAt
+        }));
+    }
+
+    async findOne(id: string): Promise<ResponseVendorDto> {
+        const vendor = await this.prisma.vendor.findUnique({
+            where: { id }
+        });
+        if (!vendor) {
+            throw new NotFoundException('Vendor not found');
+        }
+        return {
+            id: vendor.id,
+            name: vendor.name,
+            email: vendor.email,
+            role: vendor.role,
+            createdAt: vendor.createdAt,
+            updatedAt: vendor.updatedAt
+        }
+    }
 }
 
