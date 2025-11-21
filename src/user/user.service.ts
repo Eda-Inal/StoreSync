@@ -1,5 +1,5 @@
 import {
-    Injectable, ConflictException, InternalServerErrorException
+    Injectable, ConflictException, InternalServerErrorException, NotFoundException
 } from "@nestjs/common";
 import { CreateUserDto } from "./dtos/create-user.dto";
 import { UserResponseDto } from "./dtos/user-response.dto";
@@ -55,5 +55,14 @@ export class UserService {
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         }));
+    }
+
+    async findOne(id:string): Promise<UserResponseDto> {
+       const user = await this.prisma.user.findUnique({ where: { id } });
+        if(!user) {
+            throw new NotFoundException('User not found');
+        }
+       const {password, ...userWithoutPassword} = user;
+       return userWithoutPassword;
     }
 }
