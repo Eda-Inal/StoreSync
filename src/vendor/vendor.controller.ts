@@ -1,8 +1,8 @@
-import { Controller, Post, Body, ValidationPipe, Get, Param } from "@nestjs/common";
+import { Controller, Post, Body, ValidationPipe, Get, Param, Put, Delete } from "@nestjs/common"
 import { VendorService } from "./vendor.service";
 import { CreateVendorDto } from "./dtos/create-vendor.dto";
 import { ResponseVendorDto } from "./dtos/response-vendor.dto";
-
+import { UpdateVendorDto } from "./dtos/update-vendor.dto";
 
 @Controller('vendors')
 export class VendorController {
@@ -21,5 +21,15 @@ export class VendorController {
     @Get(':id')
     findOne(@Param('id') id: string): Promise<ResponseVendorDto> {
         return this.vendorService.findOne(id);
+    }
+
+    @Put(':id')
+    updateService(@Param('id') id: string, @Body(new ValidationPipe()) updateVendorDto: UpdateVendorDto): Promise<ResponseVendorDto> {
+        return this.vendorService.updateService(id, updateVendorDto);
+    }
+
+    @Delete(':id')
+    deleteService(@Param('id') id: string): Promise<void> {
+        return this.vendorService.deleteService(id);
     }
 }

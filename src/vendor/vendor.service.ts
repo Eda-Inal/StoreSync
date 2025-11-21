@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException, InternalServerErrorEx
 import { PrismaService } from "src/prisma/prisma.service";
 import { CreateVendorDto } from "./dtos/create-vendor.dto";
 import { ResponseVendorDto } from "./dtos/response-vendor.dto";
+import { UpdateVendorDto } from "./dtos/update-vendor.dto";
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -65,6 +66,40 @@ export class VendorService {
             createdAt: vendor.createdAt,
             updatedAt: vendor.updatedAt
         }
+    }
+
+    async updateService(id: string, updateVendorDto: UpdateVendorDto): Promise<ResponseVendorDto> {
+        const vendor = await this.prisma.vendor.findUnique({
+            where: { id }
+        });
+        if (!vendor) {
+            throw new NotFoundException('Vendor not found');
+        }
+        if (updateVendorDto.password) {
+            updateVendorDto.password = await bcrypt.hash(updateVendorDto.password, 10);
+        }
+        const updatedVendor = await this.prisma.vendor.update({
+            where: { id },
+            data: updateVendorDto
+        });
+        return {
+            id: updatedVendor.id,
+            name: updatedVendor.name,
+            email: updatedVendor.email,
+            role: updatedVendor.role,
+            createdAt: updatedVendor.createdAt,
+            updatedAt: updatedVendor.updatedAt
+        }
+    }
+
+    async deleteService(id: string): Promise<void> {
+        const vendor = await this.prisma.vendor.findUnique({
+            where: { id }
+        });
+        if (!vendor) {
+            throw new NotFoundException('Vendor not found');
+        }
+        await this.prisma.vendor.delete({ where: { id } });
     }
 }
 
