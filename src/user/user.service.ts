@@ -44,4 +44,16 @@ export class UserService {
         }
 
     }
+
+    async findAll(): Promise<UserResponseDto[]> {
+        const users = await this.prisma.user.findMany();
+        return users.map((user) => ({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        }));
+    }
 }
