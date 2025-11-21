@@ -1,5 +1,5 @@
 import {
-    Injectable
+    Injectable, ConflictException, InternalServerErrorException
 } from "@nestjs/common";
 import { CreateUserDto } from "./dtos/create-user.dto";
 import { UserResponseDto } from "./dtos/user-response.dto";
@@ -9,30 +9,39 @@ import * as bcrypt from 'bcrypt';
 @Injectable()
 export class UserService {
 
-constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
 
-   async create(createUserDto: CreateUserDto) {
-        const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+    async create(createUserDto: CreateUserDto) {
+        try {
+            const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
-   
-       const createdUser = await this.prisma.user.create({
-            data: {
-             name : createUserDto.name,
-             email : createUserDto.email,
-             password : hashedPassword,
-             role : "USER",
+
+            const createdUser = await this.prisma.user.create({
+                data: {
+                    name: createUserDto.name,
+                    email: createUserDto.email,
+                    password: hashedPassword,
+                    role: "USER",
+                }
+            })
+
+            const userResponse: UserResponseDto = {
+                id: createdUser.id,
+                name: createdUser.name,
+                email: createdUser.email,
+                role: createdUser.role,
+                createdAt: createdUser.createdAt,
+                updatedAt: createdUser.updatedAt,
             }
-        })
-
-        const userResponse: UserResponseDto = {
-            id: createdUser.id,
-            name: createdUser.name,
-            email: createdUser.email,
-            role: createdUser.role,
-            createdAt: createdUser.createdAt,
-            updatedAt: createdUser.updatedAt,
+            return userResponse;
         }
-        return userResponse;
+        catch (error) {
+            if (error.code === 'P2002') {
+                throw new ConflictException('Email already exists');
+            }
+            throw new InternalServerErrorException('Could not create user');
+        }
+
     }
 }
