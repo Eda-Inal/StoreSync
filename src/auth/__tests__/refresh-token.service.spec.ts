@@ -399,6 +399,28 @@ describe('RefreshTokenService', () => {
       expect(result).toBe(sessions);
     });
   });
+
+  describe('cleanupExpiredTokens', () => {
+    it('deletes expired or long-revoked tokens and returns count', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2025-02-01T00:00:00Z'));
+      prismaMock.refreshToken.deleteMany.mockResolvedValue({ count: 7 });
+
+      const deleted = await service.cleanupExpiredTokens();
+
+      expect(prismaMock.refreshToken.deleteMany).toHaveBeenCalledWith({
+        where: {
+          OR: [
+            { expiresAt: { lt: new Date('2025-02-01T00:00:00Z') } },
+            {
+              isRevoked: true,
+              lastUsedAt: { lt: new Date('2025-01-02T00:00:00Z') },
+            },
+          ],
+        },
+      });
+      expect(deleted).toBe(7);
+    });
+  });
 });
 
 
