@@ -2,6 +2,7 @@ import {
     Injectable, ConflictException, InternalServerErrorException, NotFoundException
 } from "@nestjs/common";
 import { CreateUserDto } from "./dtos/create-user.dto";
+import { UpdateUserDto } from "./dtos/update-user.dto";
 import { UserResponseDto } from "./dtos/user-response.dto";
 import { PrismaService } from "src/prisma/prisma.service";
 import * as bcrypt from 'bcrypt';
@@ -57,12 +58,33 @@ export class UserService {
         }));
     }
 
-    async findOne(id:string): Promise<UserResponseDto> {
-       const user = await this.prisma.user.findUnique({ where: { id } });
-        if(!user) {
+    async findOne(id: string): Promise<UserResponseDto> {
+        const user = await this.prisma.user.findUnique({ where: { id } });
+        if (!user) {
             throw new NotFoundException('User not found');
         }
-       const {password, ...userWithoutPassword} = user;
-       return userWithoutPassword;
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+    }
+
+    async updateService(id: string, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
+        const user = await this.prisma.user.findUnique({ where: { id } });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+        const dataToUpdate: { name?: string; email?: string; password?: string } = {
+            name: updateUserDto.name,
+            email: updateUserDto.email,
+        }
+        if (updateUserDto.password) {
+            dataToUpdate.password = await bcrypt.hash(updateUserDto.password, 10);
+        }
+
+        const updateUser = await this.prisma.user.update({
+            where: { id },
+            data: dataToUpdate
+        })
+        const { password, ...userWithoutPassword } = updateUser;
+        return userWithoutPassword;
     }
 }

@@ -1,7 +1,8 @@
-import { Controller, Post, Get, Body, ValidationPipe, Param } from "@nestjs/common";
+import { Controller, Post, Get, Body, Put, ValidationPipe, Param } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { CreateUserDto } from "./dtos/create-user.dto";
 import { UserResponseDto } from "./dtos/user-response.dto";
+import { UpdateUserDto } from "./dtos/update-user.dto";
 
 @Controller('users')
 export class UserController {
@@ -21,5 +22,10 @@ export class UserController {
     @Get(':id')
     getOne(@Param('id') id: string): Promise<UserResponseDto> {
         return this.userService.findOne(id);
+    }
+
+    @Put(':id')
+    update(@Param('id') id: string, @Body(new ValidationPipe()) updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
+        return this.userService.updateService(id, updateUserDto);
     }
 }
