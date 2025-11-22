@@ -12,7 +12,7 @@ export class VendorService {
     async create(createVendorDto: CreateVendorDto): Promise<ResponseVendorDto> {
         try {
             const hashedPassword = await bcrypt.hash(createVendorDto.password, 10);
-            const createdVendor = await this.prisma.vendor.create({
+            const createdVendor = await this.prisma.user.create({
                 data: {
                     name: createVendorDto.name,
                     email: createVendorDto.email,
@@ -40,7 +40,11 @@ export class VendorService {
     }
 
     async findAll(): Promise<ResponseVendorDto[]> {
-        const vendors = await this.prisma.vendor.findMany();
+        const vendors = await this.prisma.user.findMany({
+            where: {
+                role: 'VENDOR'
+            }
+        });
         return vendors.map(vendor => ({
             id: vendor.id,
             name: vendor.name,
@@ -52,10 +56,10 @@ export class VendorService {
     }
 
     async findOne(id: string): Promise<ResponseVendorDto> {
-        const vendor = await this.prisma.vendor.findUnique({
+        const vendor = await this.prisma.user.findUnique({
             where: { id }
         });
-        if (!vendor) {
+        if (!vendor || vendor.role !== 'VENDOR') {
             throw new NotFoundException('Vendor not found');
         }
         return {
@@ -69,18 +73,21 @@ export class VendorService {
     }
 
     async updateService(id: string, updateVendorDto: UpdateVendorDto): Promise<ResponseVendorDto> {
-        const vendor = await this.prisma.vendor.findUnique({
+        const vendor = await this.prisma.user.findUnique({
             where: { id }
         });
-        if (!vendor) {
+        if (!vendor || vendor.role !== 'VENDOR') {
             throw new NotFoundException('Vendor not found');
         }
+        const updateData: any = {};
+        if (updateVendorDto.name) updateData.name = updateVendorDto.name;
+        if (updateVendorDto.email) updateData.email = updateVendorDto.email;
         if (updateVendorDto.password) {
-            updateVendorDto.password = await bcrypt.hash(updateVendorDto.password, 10);
+            updateData.password = await bcrypt.hash(updateVendorDto.password, 10);
         }
-        const updatedVendor = await this.prisma.vendor.update({
+        const updatedVendor = await this.prisma.user.update({
             where: { id },
-            data: updateVendorDto
+            data: updateData
         });
         return {
             id: updatedVendor.id,
@@ -93,13 +100,13 @@ export class VendorService {
     }
 
     async deleteService(id: string): Promise<void> {
-        const vendor = await this.prisma.vendor.findUnique({
+        const vendor = await this.prisma.user.findUnique({
             where: { id }
         });
-        if (!vendor) {
+        if (!vendor || vendor.role !== 'VENDOR') {
             throw new NotFoundException('Vendor not found');
         }
-        await this.prisma.vendor.delete({ where: { id } });
+        await this.prisma.user.delete({ where: { id } });
     }
 }
 
