@@ -28,6 +28,11 @@ enum PaymentStatus {
   PENDING
   REFUNDED
 }
+enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+  PAYPAL
+}
 
 enum StockLogType {
   IN
@@ -60,25 +65,58 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Optional default address fields
+  address   String?
+  city      String?
+  country   String?
+  zipCode   String?
+  phone     String?
+
   favorites     Product[]      @relation("UserFavorites")
   orders        Order[]
   performedLogs EventLog[]
   refreshTokens RefreshToken[]
+  cartItems     CartItem[]
+  vendor        Vendor?
 
   @@map("users")
 }
 
+model CartItem {
+  id        String  @id @default(uuid())
+  userId    String
+  productId String
+  quantity  Int     @default(1)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("cart_items")
+}
+
 model Vendor {
   id          String   @id @default(uuid())
-  name        String   @unique
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  slug        String   @unique
   description String?
+  logoUrl     String?
+  coverUrl    String?
+  phone       String?
+
+  // Address Fields
+  address     String?
+  city        String?
+  country     String?
+  zipCode     String?
+
+  products    Product[]
+  orders      Order[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  products Product[]
-  orders   Order[]
-
-  @@map("vendors")
 }
 
 model Product {
@@ -86,17 +124,37 @@ model Product {
   name        String
   description String?
   price       Float    @default(0)
+  stock       Int      @default(0)
   vendorId    String
   categoryId  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  vendor      Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  category    Category?   @relation(fields: [categoryId], references: [id])
-  stockLogs   StockLog[]
-  favoritedBy User[]      @relation("UserFavorites")
+  vendor        Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  category      Category?       @relation(fields: [categoryId], references: [id])
+  stockLogs     StockLog[]
+  favoritedBy   User[]          @relation("UserFavorites")
+  images        ProductImage[]
+  cartItems     CartItem[]
+  variants      ProductVariant[]
+  orderItems    OrderItem[]
 
   @@map("products")
+}
+
+model ProductVariant {
+  id        String   @id @default(uuid())
+  productId String
+  name      String   // color, size, model
+  value     String   //  red, L, XL
+  price     Float?   // opsiyonel: variant 
+  stock     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
 }
 
 model Category {
@@ -112,29 +170,37 @@ model Category {
 }
 
 model Order {
-  id         String      @id @default(uuid())
-  userId     String
-  vendorId   String?
-  totalPrice Float       @default(0)
-  status     OrderStatus @default(PENDING)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id              String      @id @default(uuid())
+  userId          String
+  vendorId        String
+  totalPrice      Float       @default(0)
+  status          OrderStatus @default(PENDING)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vendor  Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  // Shipping Address Fields
+  shippingAddress String
+  shippingCity    String
+  shippingCountry String
+  shippingZip     String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   payment Payment?
+
+  items   OrderItem[]  // OrderItem ile ilişki
 
   @@map("orders")
 }
 
 model Payment {
-  id            String        @id @default(uuid())
-  orderId       String        @unique
-  amount        Float         @default(0)
-  status        PaymentStatus @default(PENDING)
-  paymentMethod String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id            String         @id @default(uuid())
+  orderId       String         @unique
+  amount        Float          @default(0)
+  status        PaymentStatus  @default(PENDING)
+  paymentMethod PaymentMethod?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -194,3 +260,28 @@ model RefreshToken {
   @@index([tokenFamily])
   @@index([userId, isRevoked])
 }
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int     @default(1)
+  price     Float   // sipariş anındaki fiyat
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  url       String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
