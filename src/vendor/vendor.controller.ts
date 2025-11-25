@@ -16,28 +16,28 @@ export class VendorController {
     constructor(private readonly vendorService: VendorService) { }
 
     @Post()
-    create(@Body(new ValidationPipe()) createVendorDto: CreateVendorDto): Promise<ResponseVendorDto> {
+    create(@Body(new ValidationPipe()) createVendorDto: CreateVendorDto) {
         return this.vendorService.create(createVendorDto);
     }
 
     
     @Get()
-    findAll(): Promise<ResponseVendorDto[]> {
+    findAll() {
         return this.vendorService.findAll();
     }
 
     @Get(':id')
-    findOne(@Param('id') id: string): Promise<ResponseVendorDto> {
+    findOne(@Param('id') id: string) {
         return this.vendorService.findOne(id);
     }
 
     @Put(':id')
-    updateService(@Param('id') id: string, @Body(new ValidationPipe()) updateVendorDto: UpdateVendorDto): Promise<ResponseVendorDto> {
+    updateService(@Param('id') id: string, @Body(new ValidationPipe()) updateVendorDto: UpdateVendorDto) {
         return this.vendorService.updateService(id, updateVendorDto);
     }
 
     @Delete(':id')
-    deleteService(@Param('id') id: string): Promise<void> {
+    deleteService(@Param('id') id: string) {
         return this.vendorService.deleteService(id);
     }
 }

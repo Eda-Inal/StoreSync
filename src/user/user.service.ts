@@ -1,11 +1,12 @@
 import {
-    Injectable, ConflictException, InternalServerErrorException, NotFoundException
+    Injectable
 } from "@nestjs/common";
 import { CreateUserDto } from "./dtos/create-user.dto";
 import { UpdateUserDto } from "./dtos/update-user.dto";
 import { UserResponseDto } from "./dtos/user-response.dto";
 import { PrismaService } from "src/prisma/prisma.service";
 import * as bcrypt from 'bcrypt';
+import { sendResponse, sendError } from "src/helper/response.helper";
 
 @Injectable()
 export class UserService {
@@ -13,7 +14,7 @@ export class UserService {
     constructor(private readonly prisma: PrismaService) { }
 
 
-    async create(createUserDto: CreateUserDto) {
+    async create(createUserDto: CreateUserDto): Promise<{success: boolean, data: UserResponseDto} | {success: boolean, statusCode: number, message: string}> {
         try {
             const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
@@ -35,42 +36,39 @@ export class UserService {
                 createdAt: createdUser.createdAt,
                 updatedAt: createdUser.updatedAt,
             }
-            return userResponse;
+            return sendResponse(userResponse);
         }
         catch (error) {
             if (error.code === 'P2002') {
-                throw new ConflictException('Email already exists');
+                return sendError('Email already exists', 409);
             }
-            throw new InternalServerErrorException('Could not create user');
+            return sendError('Could not create user', 500);
         }
 
     }
 
-    async findAll(): Promise<UserResponseDto[]> {
+    async findAll(): Promise<{success: boolean, data: UserResponseDto[]}> {
         const users = await this.prisma.user.findMany();
-        return users.map((user) => ({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt,
-        }));
+        const usersWithoutPassword = users.map((user) => {
+            const { password, ...userWithoutPassword } = user;
+            return userWithoutPassword;
+        });
+        return sendResponse(usersWithoutPassword);
     }
 
-    async findOne(id: string): Promise<UserResponseDto> {
+    async findOne(id: string): Promise<{success: boolean, data: UserResponseDto} | {success: boolean, statusCode: number, message: string}> {
         const user = await this.prisma.user.findUnique({ where: { id } });
         if (!user) {
-            throw new NotFoundException('User not found');
+            return sendError('User not found', 404);
         }
         const { password, ...userWithoutPassword } = user;
-        return userWithoutPassword;
+        return sendResponse(userWithoutPassword);
     }
 
-    async updateService(id: string, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
+    async updateService(id: string, updateUserDto: UpdateUserDto): Promise<{success: boolean, data: UserResponseDto} | {success: boolean, statusCode: number, message: string}> {
         const user = await this.prisma.user.findUnique({ where: { id } });
         if (!user) {
-            throw new NotFoundException('User not found');
+            return sendError('User not found', 404);
         }
         const dataToUpdate: { name?: string; email?: string; password?: string } = {
             name: updateUserDto.name,
@@ -85,14 +83,15 @@ export class UserService {
             data: dataToUpdate
         })
         const { password, ...userWithoutPassword } = updateUser;
-        return userWithoutPassword;
+        return sendResponse(userWithoutPassword);
     }
 
-    async deleteService(id:string): Promise<void> {
+    async deleteService(id:string): Promise<{success: boolean, data: {message: string}} | {success: boolean, statusCode: number, message: string}> {
         const user = await this.prisma.user.findUnique({ where: { id } });
         if(!user){
-            throw new NotFoundException('User not found');
+            return sendError('User not found', 404);
         }
-        const deleteUser = await this.prisma.user.delete({where: {id}});
+        await this.prisma.user.delete({where: {id}});
+        return sendResponse({message: 'User deleted successfully'});
     }
 }

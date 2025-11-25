@@ -13,36 +13,35 @@ export class UserController {
     constructor(private readonly userService: UserService) { }
 
     @Post()
-    create(@Body(new ValidationPipe()) createUserDto: CreateUserDto): Promise<UserResponseDto> {
+    create(@Body(new ValidationPipe()) createUserDto: CreateUserDto) {
         return this.userService.create(createUserDto);
     }
 
     @Get()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    getAll()
-        : Promise<UserResponseDto[]> {
+    getAll() {
         return this.userService.findAll();
     }
 
     @Get(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('USER')
-    getOne(@Param('id') id: string): Promise<UserResponseDto> {
+    getOne(@Param('id') id: string) {
         return this.userService.findOne(id);
     }
 
     @Put(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('USER')
-    update(@Param('id') id: string, @Body(new ValidationPipe()) updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
+    update(@Param('id') id: string, @Body(new ValidationPipe()) updateUserDto: UpdateUserDto) {
         return this.userService.updateService(id, updateUserDto);
     }
 
     @Delete(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('USER')
-    delete(@Param('id') id: string): Promise<void> {
+    delete(@Param('id') id: string) {
         return this.userService.deleteService(id);
     }
 }

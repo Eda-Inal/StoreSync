@@ -12,35 +12,35 @@ export class AdminController {
     constructor(private readonly adminService: AdminService) { }
 
     @Post()
-    create(@Body(new ValidationPipe()) createAdminDto: CreateAdminDto): Promise<ResponseAdminDto> {
+    create(@Body(new ValidationPipe()) createAdminDto: CreateAdminDto) {
         return this.adminService.create(createAdminDto);
     }
 
     @Get()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    findAll(): Promise<ResponseAdminDto[]> {
+    findAll() {
         return this.adminService.findAll();
     }
 
     @Get(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    findOne(@Param('id') id: string): Promise<ResponseAdminDto> {
+    findOne(@Param('id') id: string) {
         return this.adminService.findOne(id);
     }
 
     @Put(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    updateService(@Param('id') id: string, @Body(new ValidationPipe()) updateAdminDto: UpdateAdminDto): Promise<ResponseAdminDto> {
+    updateService(@Param('id') id: string, @Body(new ValidationPipe()) updateAdminDto: UpdateAdminDto) {
         return this.adminService.updateService(id, updateAdminDto);
     }
 
     @Delete(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    deleteService(@Param('id') id: string): Promise<void> {
+    deleteService(@Param('id') id: string) {
         return this.adminService.deleteService(id);
     }
 }

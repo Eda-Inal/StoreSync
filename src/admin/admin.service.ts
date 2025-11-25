@@ -1,15 +1,16 @@
-import { Injectable, NotFoundException, ConflictException, InternalServerErrorException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CreateAdminDto } from "./dtos/create-admin.dto";
 import { ResponseAdminDto } from "./dtos/response-sdmin.dto";
 import { UpdateAdminDto } from "./dtos/update-admin.dto";
 import * as bcrypt from 'bcrypt';
+import { sendResponse, sendError } from "src/helper/response.helper";
 
 @Injectable()
 export class AdminService {
     constructor(private readonly prisma: PrismaService) { }
 
-    async create(createAdminDto: CreateAdminDto): Promise<ResponseAdminDto> {
+    async create(createAdminDto: CreateAdminDto): Promise<{success: boolean, data: ResponseAdminDto} | {success: boolean, statusCode: number, message: string}> {
         try {
             const hashedPassword = await bcrypt.hash(createAdminDto.password, 10);
             const createdAdmin = await this.prisma.user.create({
@@ -21,63 +22,55 @@ export class AdminService {
                 }
             })
 
-            return {
-                    id: createdAdmin.id,
-                    name: createdAdmin.name,
-                    email: createdAdmin.email,
-                    role: createdAdmin.role,
-                    createdAt: createdAdmin.createdAt,
-                    updatedAt: createdAdmin.updatedAt
+            const adminResponse: ResponseAdminDto = {
+                id: createdAdmin.id,
+                name: createdAdmin.name,
+                email: createdAdmin.email,
+                role: createdAdmin.role,
+                createdAt: createdAdmin.createdAt,
+                updatedAt: createdAdmin.updatedAt
             }
+            return sendResponse(adminResponse);
 
         }
         catch (error) {
             if (error.code === 'P2002') {
-                throw new ConflictException('Email already exists');
+                return sendError('Email already exists', 409);
             }
-            throw new InternalServerErrorException('Could not create admin');
+            return sendError('Could not create admin', 500);
         }
     }
 
-    async findAll(): Promise<ResponseAdminDto[]> {
+    async findAll(): Promise<{success: boolean, data: ResponseAdminDto[]}> {
         const admins = await this.prisma.user.findMany({
             where: {
                 role: 'ADMIN'
             }
         });
-        return admins.map(admin => ({
-            id: admin.id,
-            name: admin.name,
-            email: admin.email,
-            role: admin.role,
-            createdAt: admin.createdAt,
-            updatedAt: admin.updatedAt
-        }));
+        const adminsWithoutPassword = admins.map(admin => {
+            const { password, ...adminWithoutPassword } = admin;
+            return adminWithoutPassword;
+        });
+        return sendResponse(adminsWithoutPassword);
     }
 
-    async findOne(id: string): Promise<ResponseAdminDto> {
+    async findOne(id: string): Promise<{success: boolean, data: ResponseAdminDto} | {success: boolean, statusCode: number, message: string}> {
         const admin = await this.prisma.user.findUnique({
             where: { id }
         });
         if (!admin || admin.role !== 'ADMIN') {
-            throw new NotFoundException('Admin not found');
+            return sendError('Admin not found', 404);
         }
-        return {
-            id: admin.id,
-            name: admin.name,
-            email: admin.email,
-            role: admin.role,
-            createdAt: admin.createdAt,
-            updatedAt: admin.updatedAt  
-        }
+        const { password, ...adminWithoutPassword } = admin;
+        return sendResponse(adminWithoutPassword);
     }
 
-    async updateService(id: string, updateAdminDto: UpdateAdminDto): Promise<ResponseAdminDto> {
+    async updateService(id: string, updateAdminDto: UpdateAdminDto): Promise<{success: boolean, data: ResponseAdminDto} | {success: boolean, statusCode: number, message: string}> {
         const admin = await this.prisma.user.findUnique({
             where: { id }
         });
         if (!admin || admin.role !== 'ADMIN') {
-            throw new NotFoundException('Admin not found');
+            return sendError('Admin not found', 404);
         }
         const updateData: any = {};
         if (updateAdminDto.name) updateData.name = updateAdminDto.name;
@@ -89,24 +82,19 @@ export class AdminService {
             where: { id },
             data: updateData
         });
-        return {
-            id: updatedAdmin.id,
-            name: updatedAdmin.name,
-            email: updatedAdmin.email,
-            role: updatedAdmin.role,
-            createdAt: updatedAdmin.createdAt,
-            updatedAt: updatedAdmin.updatedAt
-        }
+        const { password, ...adminWithoutPassword } = updatedAdmin;
+        return sendResponse(adminWithoutPassword);
     }
 
-    async deleteService(id: string): Promise<void> {
+    async deleteService(id: string): Promise<{success: boolean, data: {message: string}} | {success: boolean, statusCode: number, message: string}> {
         const admin = await this.prisma.user.findUnique({
             where: { id }
         });
         if (!admin || admin.role !== 'ADMIN') {
-            throw new NotFoundException('Admin not found');
+            return sendError('Admin not found', 404);
         }
         await this.prisma.user.delete({ where: { id } });
+        return sendResponse({message: 'Admin deleted successfully'});
     }
 }
 
