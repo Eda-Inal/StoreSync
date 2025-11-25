@@ -1,8 +1,11 @@
-import { Controller, Post, Body, ValidationPipe, Get, Param, Put, Delete } from "@nestjs/common"
+import { Controller, Post, Body, ValidationPipe, Get, Param, Put, Delete, UseGuards } from "@nestjs/common"
 import { AdminService } from "./admin.service";
 import { CreateAdminDto } from "./dtos/create-admin.dto";
 import { ResponseAdminDto } from "./dtos/response-sdmin.dto";
 import { UpdateAdminDto } from "./dtos/update-admin.dto";
+import { JwtAuthGuard } from "../auth/guards/jwt.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
 
 @Controller('admin')
 export class AdminController {
@@ -14,21 +17,29 @@ export class AdminController {
     }
 
     @Get()
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ADMIN')
     findAll(): Promise<ResponseAdminDto[]> {
         return this.adminService.findAll();
     }
 
     @Get(':id')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ADMIN')
     findOne(@Param('id') id: string): Promise<ResponseAdminDto> {
         return this.adminService.findOne(id);
     }
 
     @Put(':id')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ADMIN')
     updateService(@Param('id') id: string, @Body(new ValidationPipe()) updateAdminDto: UpdateAdminDto): Promise<ResponseAdminDto> {
         return this.adminService.updateService(id, updateAdminDto);
     }
 
     @Delete(':id')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ADMIN')
     deleteService(@Param('id') id: string): Promise<void> {
         return this.adminService.deleteService(id);
     }

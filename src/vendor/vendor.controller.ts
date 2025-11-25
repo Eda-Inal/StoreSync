@@ -3,8 +3,15 @@ import { VendorService } from "./vendor.service";
 import { CreateVendorDto } from "./dtos/create-vendor.dto";
 import { ResponseVendorDto } from "./dtos/response-vendor.dto";
 import { UpdateVendorDto } from "./dtos/update-vendor.dto";
+import { JwtAuthGuard } from "../auth/guards/jwt.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { UseGuards } from "@nestjs/common";
+
 
 @Controller('vendors')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
 export class VendorController {
     constructor(private readonly vendorService: VendorService) { }
 
@@ -13,6 +20,7 @@ export class VendorController {
         return this.vendorService.create(createVendorDto);
     }
 
+    
     @Get()
     findAll(): Promise<ResponseVendorDto[]> {
         return this.vendorService.findAll();
