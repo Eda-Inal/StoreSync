@@ -72,34 +72,23 @@ model User {
   zipCode   String?
   phone     String?
 
-  favorites     Product[]      @relation("UserFavorites")
+  favorites     Product[]     @relation("UserFavorites")
   orders        Order[]
   performedLogs EventLog[]
   refreshTokens RefreshToken[]
   cartItems     CartItem[]
   vendor        Vendor?
 
+  @@index([role])
   @@map("users")
 }
 
-model CartItem {
-  id        String  @id @default(uuid())
-  userId    String
-  productId String
-  quantity  Int     @default(1)
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@map("cart_items")
-}
 
 model Vendor {
   id          String   @id @default(uuid())
   userId      String   @unique
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name        String
   slug        String   @unique
   description String?
   logoUrl     String?
@@ -122,7 +111,7 @@ model Vendor {
 model Product {
   id          String   @id @default(uuid())
   name        String
-  description String?
+  description String
   price       Float    @default(0)
   stock       Int      @default(0)
   vendorId    String
@@ -131,7 +120,7 @@ model Product {
   updatedAt   DateTime @updatedAt
 
   vendor        Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  category      Category?       @relation(fields: [categoryId], references: [id])
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   stockLogs     StockLog[]
   favoritedBy   User[]          @relation("UserFavorites")
   images        ProductImage[]
@@ -140,14 +129,15 @@ model Product {
   orderItems    OrderItem[]
 
   @@map("products")
+  @@index([vendorId])
+  @@index([categoryId])
 }
 
 model ProductVariant {
   id        String   @id @default(uuid())
   productId String
-  name      String   // color, size, model
+  name      String  // color, size, model
   value     String   //  red, L, XL
-  price     Float?   // opsiyonel: variant 
   stock     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -155,6 +145,19 @@ model ProductVariant {
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("product_variants")
+  @@index([productId])
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  url       String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+  @@index([productId])
 }
 
 model Category {
@@ -169,10 +172,24 @@ model Category {
   @@map("categories")
 }
 
+model CartItem {
+  id        String  @id @default(uuid())
+  userId    String
+  productId String
+  quantity  Int     @default(1)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("cart_items")
+  @@index([userId])
+  @@index([productId])
+}
+
 model Order {
   id              String      @id @default(uuid())
   userId          String
-  vendorId        String
+  vendorId        String?
   totalPrice      Float       @default(0)
   status          OrderStatus @default(PENDING)
   createdAt       DateTime    @default(now())
@@ -185,12 +202,14 @@ model Order {
   shippingZip     String
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendor  Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   payment Payment?
 
-  items   OrderItem[]  // OrderItem ile ilişki
+  items   OrderItem[]  
 
   @@map("orders")
+  @@index([userId])
+  @@index([vendorId])
 }
 
 model Payment {
@@ -198,7 +217,7 @@ model Payment {
   orderId       String         @unique
   amount        Float          @default(0)
   status        PaymentStatus  @default(PENDING)
-  paymentMethod PaymentMethod?
+  paymentMethod PaymentMethod
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -210,7 +229,7 @@ model Payment {
 model StockLog {
   id        String       @id @default(uuid())
   productId String
-  quantity  Int
+  quantity  Int // non-negative constraint enforced via migrations
   type      StockLogType
   timestamp DateTime     @default(now())
 
@@ -274,14 +293,4 @@ model OrderItem {
   @@map("order_items")
 }
 
-model ProductImage {
-  id        String   @id @default(uuid())
-  productId String
-  url       String
-  createdAt DateTime @default(now())
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@map("product_images")
-}
 
