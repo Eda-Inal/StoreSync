@@ -7,34 +7,34 @@ export class CreateVendorProfileDto {
 
 
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     description: string;
 
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     logoUrl: string;
 
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     coverUrl: string;
 
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     phone: string;
 
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     address: string;
 
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     city: string;
 
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     country: string;
 
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     zipCode: string;
 }

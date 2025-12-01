@@ -90,16 +90,16 @@ model Vendor {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   slug        String   @unique
-  description String?
-  logoUrl     String?
-  coverUrl    String?
-  phone       String?
+  description String
+  logoUrl     String
+  coverUrl    String
+  phone       String
 
   // Address Fields
-  address     String?
-  city        String?
-  country     String?
-  zipCode     String?
+  address     String
+  city        String
+  country     String
+  zipCode     String
 
   products    Product[]
   orders      Order[]
