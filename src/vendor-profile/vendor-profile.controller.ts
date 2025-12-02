@@ -1,4 +1,4 @@
-import { Controller, Post, UseGuards, Body, HttpCode } from "@nestjs/common";
+import { Controller, Post, UseGuards, Body, HttpCode, Param, ForbiddenException, Get } from "@nestjs/common";
 import { VendorProfileService } from "./vendor-profile.service";
 import { CreateVendorProfileDto } from "./create-vendor-profile.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt.guard";
@@ -20,6 +20,10 @@ export class VendorProfileController {
 
     const profile = await this.vendorProfileService.create(createVendorProfileDto, user.id);
     return sendResponse(profile);
+  }
+  @Get('me')
+  async findMe(@User() user: UserPayload) {
+    return await this.vendorProfileService.findMe(user.id);
   }
 }
 

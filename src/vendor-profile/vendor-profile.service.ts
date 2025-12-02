@@ -1,8 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CreateVendorProfileDto } from "./create-vendor-profile.dto";
 import { ConflictException, InternalServerErrorException } from "@nestjs/common";
 import { Vendor } from "generated/prisma";
+
 
 
 @Injectable()
@@ -40,5 +41,21 @@ export class VendorProfileService {
             throw new InternalServerErrorException('Failed to create vendor profile')
         }
 
+    }
+    async findMe(userId: string): Promise<Vendor> {
+        try {
+            const vendor = await this.prisma.vendor.findUnique({
+                where: { userId: userId }
+            });
+            if (!vendor) {
+                throw new NotFoundException('Vendor profile not found');
+            }
+            return vendor;
+        } catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to retrieve vendor profile');
+        }
     }
 }
