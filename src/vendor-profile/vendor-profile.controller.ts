@@ -1,4 +1,4 @@
-import { Controller, Post, UseGuards, Body, HttpCode, Param, ForbiddenException, Get, Put } from "@nestjs/common";
+import { Controller, Post, UseGuards, Body, HttpCode, Param, ForbiddenException, Get, Put, Delete } from "@nestjs/common";
 import { VendorProfileService } from "./vendor-profile.service";
 import { CreateVendorProfileDto } from "./create-vendor-profile.dto";
 import { UpdateVendorProfileDto } from "./update-vendor-profile.dto";
@@ -78,6 +78,11 @@ export class VendorProfileController {
       updatedAt: profile.updatedAt,
     };
     return sendResponse(vendorProfileResponseDto);
+  }
+  @Delete('me')
+  async deleteMe(@User() user: UserPayload) {
+    await this.vendorProfileService.deleteMe(user.id);
+    return sendResponse({ message: 'Vendor profile deleted successfully' });
   }
 }
 

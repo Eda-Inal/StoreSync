@@ -87,7 +87,7 @@ model User {
 model Vendor {
   id          String   @id @default(uuid())
   userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   slug        String   @unique
   description String
@@ -104,6 +104,9 @@ model Vendor {
   products    Product[]
   orders      Order[]
 
+  deletedAt DateTime?
+  isActive Boolean @default(true)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -114,12 +117,12 @@ model Product {
   description String
   price       Float    @default(0)
   stock       Int      @default(0)
-  vendorId    String
+  vendorId    String?
   categoryId  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  vendor        Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendor        Vendor?         @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   stockLogs     StockLog[]
   favoritedBy   User[]          @relation("UserFavorites")
@@ -127,6 +130,8 @@ model Product {
   cartItems     CartItem[]
   variants      ProductVariant[]
   orderItems    OrderItem[]
+
+  deletedAt DateTime?
 
   @@map("products")
   @@index([vendorId])
@@ -202,7 +207,7 @@ model Order {
   shippingZip     String
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vendor  Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  vendor  Vendor? @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   payment Payment?
 
   items   OrderItem[]  

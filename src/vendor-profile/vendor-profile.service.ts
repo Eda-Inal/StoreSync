@@ -77,7 +77,17 @@ export class VendorProfileService {
             }
             const updatedVendor = await this.prisma.vendor.update({
                 where: { userId: userId },
-                data: updateVendorProfileDto
+                data: {
+                    slug: updateVendorProfileDto.slug,
+                    description: updateVendorProfileDto.description,
+                    logoUrl: updateVendorProfileDto.logoUrl,
+                    coverUrl: updateVendorProfileDto.coverUrl,
+                    phone: updateVendorProfileDto.phone,
+                    address: updateVendorProfileDto.address,
+                    city: updateVendorProfileDto.city,
+                    country: updateVendorProfileDto.country,
+                    zipCode: updateVendorProfileDto.zipCode,
+                }
             });
 
             return updatedVendor;
@@ -88,6 +98,35 @@ export class VendorProfileService {
             throw new InternalServerErrorException('Failed to update vendor profile');
         }
     }
+    async deleteMe(userId: string): Promise<void> {
+        try{
+            const vendor = await this.prisma.vendor.findUnique({
+                where:{userId:userId}
+            });
+            if(!vendor){
+                throw new NotFoundException('Vendor profile not found');
+            }
+            const orderCount = await this.prisma.order.count({
+                where:{vendorId:vendor.id}
+        })
+            if(orderCount > 0){
+                throw new ConflictException('You have orders associated with your profile, ');
+            }
+            await this.prisma.vendor.update({
+                where:{userId:userId},
+                data:{
+                    deletedAt:new Date(),
+                    isActive:false
+                }
+            });
 
+
+        }catch(error){
+            if( error instanceof NotFoundException){
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to delete vendor profile');
+        }
+    }
 
 }
