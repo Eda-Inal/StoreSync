@@ -36,8 +36,12 @@ export class VendorProfileService {
             return createdVendorProfile;
 
         } catch (error: any) {
+            console.error('Error creating vendor profile:', error);
             if (error?.code === 'P2002') {
                 throw new ConflictException("Slug already exists");
+            }
+            if (error instanceof ConflictException) {
+                throw error;
             }
             throw new InternalServerErrorException('Failed to create vendor profile')
         }
