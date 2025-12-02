@@ -35,17 +35,23 @@ export class VendorService {
         }
     }
 
-    async findAll(): Promise<{ success: boolean, data: ResponseVendorDto[] }> {
-        const vendors = await this.prisma.user.findMany({
-            where: {
-                role: 'VENDOR'
-            }
-        });
-        const vendorsWithoutPassword = vendors.map(vendor => {
-            const { password, ...vendorWithoutPassword } = vendor;
-            return vendorWithoutPassword;
-        });
-        return sendResponse(vendorsWithoutPassword);
+    async findAll(): Promise<Omit<User, 'password'>[]> {
+        try {
+            const vendors = await this.prisma.user.findMany({
+                where: {
+                    role: 'VENDOR'
+                }
+            });
+            const vendorsWithoutPassword = vendors.map(vendor => {
+                const { password, ...vendorWithoutPassword } = vendor;
+                return vendorWithoutPassword;
+            });
+            return vendorsWithoutPassword;
+        }
+        catch (error) {
+            throw new InternalServerErrorException('Could not retrieve vendors');
+        }
+
     }
 
     async findOne(id: string): Promise<{ success: boolean, data: ResponseVendorDto } | { success: boolean, statusCode: number, message: string }> {

@@ -32,8 +32,19 @@ export class VendorController {
 
 
     @Get()
-    findAll() {
-        return this.vendorService.findAll();
+    async findAll() {
+        const vendors = await this.vendorService.findAll();
+        const responseVendorsDto: ResponseVendorDto[] = vendors.map(vendor => {
+            return {
+                id: vendor.id,
+                name: vendor.name,
+                email: vendor.email,
+                role: vendor.role,
+                createdAt: vendor.createdAt,
+                updatedAt: vendor.updatedAt
+            }
+        });
+        return responseVendorsDto;
     }
 
     @Get(':id')
