@@ -3,6 +3,7 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { CreateVendorProfileDto } from "./create-vendor-profile.dto";
 import { ConflictException, InternalServerErrorException } from "@nestjs/common";
 import { Vendor } from "generated/prisma";
+import { UpdateVendorProfileDto } from "./update-vendor-profile.dto";
 
 
 
@@ -58,4 +59,35 @@ export class VendorProfileService {
             throw new InternalServerErrorException('Failed to retrieve vendor profile');
         }
     }
+    async updateMe(updateVendorProfileDto: UpdateVendorProfileDto, userId: string): Promise<Vendor> {
+        try {
+            const vendor = await this.prisma.vendor.findUnique({
+                where: { userId: userId }
+            });
+            if (!vendor) {
+                throw new NotFoundException('Vendor profile not found');
+            }
+            if (updateVendorProfileDto.slug) {
+                const vendorWithSameSlug = await this.prisma.vendor.findUnique({
+                    where: { slug: updateVendorProfileDto.slug }
+                });
+                if (vendorWithSameSlug && vendorWithSameSlug.id !== vendor.id) {
+                    throw new ConflictException('Slug already exists');
+                }
+            }
+            const updatedVendor = await this.prisma.vendor.update({
+                where: { userId: userId },
+                data: updateVendorProfileDto
+            });
+
+            return updatedVendor;
+        } catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to update vendor profile');
+        }
+    }
+
+
 }
