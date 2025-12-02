@@ -11,6 +11,12 @@ export class VendorProfileService {
     async create(createVendorProfileDto: CreateVendorProfileDto, userId: string): Promise<Vendor> {
 
         try {
+            const vendor = await this.prisma.vendor.findUnique({
+                where: { userId: userId }
+            });
+            if (vendor) {
+                throw new ConflictException('Vendor profile already exists');
+            }
             const createdVendorProfile = await this.prisma.vendor.create({
                 data: {
                     userId: userId,
