@@ -1,46 +1,41 @@
-import { Controller, Post, Body, ValidationPipe, Get, Param, Put, Delete, UseGuards } from "@nestjs/common"
+import { Controller, Post, Body, Get, Param, UseGuards, UseInterceptors, HttpCode, ForbiddenException, Patch } from "@nestjs/common"
 import { AdminService } from "./admin.service";
 import { CreateAdminDto } from "./dtos/create-admin.dto";
-import { ResponseAdminDto } from "./dtos/response-sdmin.dto";
 import { UpdateAdminDto } from "./dtos/update-admin.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
+import { AdminResponseInterceptor } from "src/common/interceptors/admin-response.interceptor";
+import { User } from "src/common/decorators/user.decorator";
+import type { UserPayload } from "src/common/types/user-payload.type";
 
-@Controller('admin')
+@Controller('admins')
+@UseInterceptors(AdminResponseInterceptor)
 export class AdminController {
     constructor(private readonly adminService: AdminService) { }
 
     @Post()
-    create(@Body(new ValidationPipe()) createAdminDto: CreateAdminDto) {
-        return this.adminService.create(createAdminDto);
+    @HttpCode(201)
+    async create(@Body() createAdminDto: CreateAdminDto) {
+        return await this.adminService.create(createAdminDto);
     }
 
-    @Get()
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('ADMIN')
-    findAll() {
-        return this.adminService.findAll();
-    }
 
     @Get(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    findOne(@Param('id') id: string) {
-        return this.adminService.findOne(id);
+    async findOne(@Param('id') id: string, @User() user: UserPayload) {
+        if (user.id !== id)
+            throw new ForbiddenException('You are not authorized to access this resource');
+        return await this.adminService.findOne(id);
     }
 
-    @Put(':id')
+    @Patch(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    updateService(@Param('id') id: string, @Body(new ValidationPipe()) updateAdminDto: UpdateAdminDto) {
-        return this.adminService.updateService(id, updateAdminDto);
-    }
-
-    @Delete(':id')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('ADMIN')
-    deleteService(@Param('id') id: string) {
-        return this.adminService.deleteService(id);
+    async updateService(@Param('id') id: string, @Body() updateAdminDto: UpdateAdminDto, @User() user: UserPayload) {
+        if (user.id !== id)
+            throw new ForbiddenException('You are not authorized to access this resource');
+        return await this.adminService.updateService(id, updateAdminDto);
     }
 }
