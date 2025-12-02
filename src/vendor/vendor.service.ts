@@ -1,16 +1,17 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, ConflictException, InternalServerErrorException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CreateVendorDto } from "./dtos/create-vendor.dto";
 import { ResponseVendorDto } from "./dtos/response-vendor.dto";
 import { UpdateVendorDto } from "./dtos/update-vendor.dto";
 import * as bcrypt from 'bcrypt';
 import { sendResponse, sendError } from "src/helper/response.helper";
+import type { User } from "generated/prisma";
 
 @Injectable()
 export class VendorService {
     constructor(private readonly prisma: PrismaService) { }
 
-    async create(createVendorDto: CreateVendorDto): Promise<{success: boolean, data: ResponseVendorDto} | {success: boolean, statusCode: number, message: string}> {
+    async create(createVendorDto: CreateVendorDto): Promise<Omit<User, 'password'>> {
         try {
             const hashedPassword = await bcrypt.hash(createVendorDto.password, 10);
             const createdVendor = await this.prisma.user.create({
@@ -22,26 +23,19 @@ export class VendorService {
                 }
             })
 
-            const vendorResponse: ResponseVendorDto = {
-                id: createdVendor.id,
-                name: createdVendor.name,
-                email: createdVendor.email,
-                role: createdVendor.role,
-                createdAt: createdVendor.createdAt,
-                updatedAt: createdVendor.updatedAt
-            }
-            return sendResponse(vendorResponse);
+            const { password, ...vendorWithoutPassword } = createdVendor;
+            return vendorWithoutPassword;
 
         }
         catch (error) {
             if (error.code === 'P2002') {
-                return sendError('Email already exists', 409);
+                throw new ConflictException('Email already exists');
             }
-            return sendError('Could not create vendor', 500);
+            throw new InternalServerErrorException('Could not create vendor');
         }
     }
 
-    async findAll(): Promise<{success: boolean, data: ResponseVendorDto[]}> {
+    async findAll(): Promise<{ success: boolean, data: ResponseVendorDto[] }> {
         const vendors = await this.prisma.user.findMany({
             where: {
                 role: 'VENDOR'
@@ -54,7 +48,7 @@ export class VendorService {
         return sendResponse(vendorsWithoutPassword);
     }
 
-    async findOne(id: string): Promise<{success: boolean, data: ResponseVendorDto} | {success: boolean, statusCode: number, message: string}> {
+    async findOne(id: string): Promise<{ success: boolean, data: ResponseVendorDto } | { success: boolean, statusCode: number, message: string }> {
         const vendor = await this.prisma.user.findUnique({
             where: { id }
         });
@@ -65,7 +59,7 @@ export class VendorService {
         return sendResponse(vendorWithoutPassword);
     }
 
-    async updateService(id: string, updateVendorDto: UpdateVendorDto): Promise<{success: boolean, data: ResponseVendorDto} | {success: boolean, statusCode: number, message: string}> {
+    async updateService(id: string, updateVendorDto: UpdateVendorDto): Promise<{ success: boolean, data: ResponseVendorDto } | { success: boolean, statusCode: number, message: string }> {
         const vendor = await this.prisma.user.findUnique({
             where: { id }
         });
@@ -86,7 +80,7 @@ export class VendorService {
         return sendResponse(vendorWithoutPassword);
     }
 
-    async deleteService(id: string): Promise<{success: boolean, data: {message: string}} | {success: boolean, statusCode: number, message: string}> {
+    async deleteService(id: string): Promise<{ success: boolean, data: { message: string } } | { success: boolean, statusCode: number, message: string }> {
         const vendor = await this.prisma.user.findUnique({
             where: { id }
         });
@@ -94,7 +88,7 @@ export class VendorService {
             return sendError('Vendor not found', 404);
         }
         await this.prisma.user.delete({ where: { id } });
-        return sendResponse({message: 'Vendor deleted successfully'});
+        return sendResponse({ message: 'Vendor deleted successfully' });
     }
 }
 

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, ValidationPipe, Get, Param, Put, Delete } from "@nestjs/common"
+import { Controller, Post, Body, ValidationPipe, Get, Param, Put, Delete, HttpCode } from "@nestjs/common"
 import { VendorService } from "./vendor.service";
 import { CreateVendorDto } from "./dtos/create-vendor.dto";
 import { ResponseVendorDto } from "./dtos/response-vendor.dto";
@@ -16,11 +16,21 @@ export class VendorController {
     constructor(private readonly vendorService: VendorService) { }
 
     @Post()
-    create(@Body(new ValidationPipe()) createVendorDto: CreateVendorDto) {
-        return this.vendorService.create(createVendorDto);
+    @HttpCode(201)
+    async create(@Body() createVendorDto: CreateVendorDto) {
+        const vendor = await this.vendorService.create(createVendorDto);
+        const responseVendorDto: ResponseVendorDto = {
+            id: vendor.id,
+            name: vendor.name,
+            email: vendor.email,
+            role: vendor.role,
+            createdAt: vendor.createdAt,
+            updatedAt: vendor.updatedAt
+        }
+        return responseVendorDto;
     }
 
-    
+
     @Get()
     findAll() {
         return this.vendorService.findAll();
