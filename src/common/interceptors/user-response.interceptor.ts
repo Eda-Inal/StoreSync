@@ -3,6 +3,7 @@ import { Observable } from "rxjs";
 import { UserResponseDto } from "src/user/dtos/user-response.dto";
 import { map } from 'rxjs/operators';
 import { sendResponse } from "src/helper/response.helper";
+import type { User } from "generated/prisma";
 
 
 @Injectable()
@@ -23,7 +24,7 @@ export class UserResponseInterceptor implements NestInterceptor {
     );
   }
 
-  private toUserResponseDto(user: any): UserResponseDto {
+  private toUserResponseDto(user: Omit<User, 'password'>): UserResponseDto {
     return {
       id: user.id,
       name: user.name,

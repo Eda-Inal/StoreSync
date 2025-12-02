@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, HttpCode,UseInterceptors } from "@nestjs/common"
+import { Controller, Post, Body, Get, Param, HttpCode, UseInterceptors } from "@nestjs/common"
 import { VendorService } from "./vendor.service";
 import { CreateVendorDto } from "./dtos/create-vendor.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt.guard";

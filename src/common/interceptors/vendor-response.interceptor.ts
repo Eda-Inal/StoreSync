@@ -3,6 +3,7 @@ import { Observable } from "rxjs";
 import { ResponseVendorDto } from "src/vendor/dtos/response-vendor.dto";
 import { map } from 'rxjs/operators';
 import { sendResponse } from "src/helper/response.helper";
+import type { User } from "generated/prisma";
 
 
 @Injectable()
@@ -23,7 +24,7 @@ export class VendorResponseInterceptor implements NestInterceptor {
         );
     }
 
-    private toVendorResponseDto(vendor: any): ResponseVendorDto {
+    private toVendorResponseDto(vendor: Omit<User, 'password'>): ResponseVendorDto {
         return {
             id: vendor.id,
             name: vendor.name,
