@@ -1,20 +1,23 @@
 import {
-    Injectable
+    Injectable,
+    ConflictException,
+    InternalServerErrorException,
+    NotFoundException,
 } from "@nestjs/common";
 import { CreateUserDto } from "./dtos/create-user.dto";
 import { UpdateUserDto } from "./dtos/update-user.dto";
 import { UserResponseDto } from "./dtos/user-response.dto";
 import { PrismaService } from "src/prisma/prisma.service";
 import * as bcrypt from 'bcrypt';
-import { sendResponse, sendError } from "src/helper/response.helper";
+import { sendResponse, sendError } from "src/helper/response.helper"
+import { User } from "generated/prisma";
 
 @Injectable()
 export class UserService {
 
     constructor(private readonly prisma: PrismaService) { }
 
-
-    async create(createUserDto: CreateUserDto): Promise<{success: boolean, data: UserResponseDto} | {success: boolean, statusCode: number, message: string}> {
+    async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
         try {
             const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
@@ -27,71 +30,98 @@ export class UserService {
                     role: "USER",
                 }
             })
-
-            const userResponse: UserResponseDto = {
-                id: createdUser.id,
-                name: createdUser.name,
-                email: createdUser.email,
-                role: createdUser.role,
-                createdAt: createdUser.createdAt,
-                updatedAt: createdUser.updatedAt,
-            }
-            return sendResponse(userResponse);
+            const { password, ...userWithoutPassword } = createdUser;
+            return userWithoutPassword;
         }
         catch (error) {
             if (error.code === 'P2002') {
-                return sendError('Email already exists', 409);
+                throw new ConflictException('Email already exists');
             }
-            return sendError('Could not create user', 500);
+            throw new InternalServerErrorException('Could not create user');
         }
 
     }
 
-    async findAll(): Promise<{success: boolean, data: UserResponseDto[]}> {
-        const users = await this.prisma.user.findMany();
-        const usersWithoutPassword = users.map((user) => {
+    async findAll(): Promise<Omit<User, 'password'>[]> {
+        try {
+            const users = await this.prisma.user.findMany();
+            const usersWithoutPassword = users.map((user) => {
+                const { password, ...userWithoutPassword } = user;
+                return userWithoutPassword;
+            });
+            return usersWithoutPassword;
+        }
+        catch (error) {
+            throw new InternalServerErrorException('Failed to retrieve users.');
+        }
+    }
+
+    async findOne(id: string): Promise<Omit<User, 'password'>> {
+        try {
+            const user = await this.prisma.user.findUnique({ where: { id } });
+            if (!user) {
+                throw new NotFoundException('User not found');
+
+            }
             const { password, ...userWithoutPassword } = user;
             return userWithoutPassword;
-        });
-        return sendResponse(usersWithoutPassword);
+        }
+        catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to retrieve user.');
+        }
+
     }
 
-    async findOne(id: string): Promise<{success: boolean, data: UserResponseDto} | {success: boolean, statusCode: number, message: string}> {
-        const user = await this.prisma.user.findUnique({ where: { id } });
-        if (!user) {
-            return sendError('User not found', 404);
+    async updateService(id: string, updateUserDto: UpdateUserDto): Promise<Omit<User, 'password'>> {
+        try {
+            const user = await this.prisma.user.findUnique({ where: { id } });
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+            const dataToUpdate: { name?: string; email?: string; password?: string } = {
+                name: updateUserDto.name,
+                email: updateUserDto.email,
+            }
+            if (updateUserDto.password) {
+                dataToUpdate.password = await bcrypt.hash(updateUserDto.password, 10);
+            }
+
+            const updateUser = await this.prisma.user.update({
+                where: { id },
+                data: dataToUpdate
+            })
+            const { password, ...userWithoutPassword } = updateUser;
+            return userWithoutPassword
         }
-        const { password, ...userWithoutPassword } = user;
-        return sendResponse(userWithoutPassword);
+        catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            if (error.code === 'P2002') {
+                throw new ConflictException('Email already exists');
+            }
+            throw new InternalServerErrorException('Failed to update user.');
+        }
+
     }
 
-    async updateService(id: string, updateUserDto: UpdateUserDto): Promise<{success: boolean, data: UserResponseDto} | {success: boolean, statusCode: number, message: string}> {
-        const user = await this.prisma.user.findUnique({ where: { id } });
-        if (!user) {
-            return sendError('User not found', 404);
+    async deleteService(id: string): Promise<void> {
+        try {
+            const user = await this.prisma.user.findUnique({ where: { id } });
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+            await this.prisma.user.delete({ where: { id } });
         }
-        const dataToUpdate: { name?: string; email?: string; password?: string } = {
-            name: updateUserDto.name,
-            email: updateUserDto.email,
-        }
-        if (updateUserDto.password) {
-            dataToUpdate.password = await bcrypt.hash(updateUserDto.password, 10);
+        catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to delete user.');
         }
 
-        const updateUser = await this.prisma.user.update({
-            where: { id },
-            data: dataToUpdate
-        })
-        const { password, ...userWithoutPassword } = updateUser;
-        return sendResponse(userWithoutPassword);
-    }
-
-    async deleteService(id:string): Promise<{success: boolean, data: {message: string}} | {success: boolean, statusCode: number, message: string}> {
-        const user = await this.prisma.user.findUnique({ where: { id } });
-        if(!user){
-            return sendError('User not found', 404);
-        }
-        await this.prisma.user.delete({where: {id}});
-        return sendResponse({message: 'User deleted successfully'});
     }
 }

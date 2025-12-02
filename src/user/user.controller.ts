@@ -1,47 +1,65 @@
-import { Controller, Post, Get, Body, Put, Delete, ValidationPipe, Param } from "@nestjs/common";
+import { Controller, Post, Get, Body, Put, Delete, Param, HttpCode, ForbiddenException, Patch, UseInterceptors } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { CreateUserDto } from "./dtos/create-user.dto";
-import { UserResponseDto } from "./dtos/user-response.dto";
 import { UpdateUserDto } from "./dtos/update-user.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { UseGuards } from "@nestjs/common";
+import { User } from "src/common/decorators/user.decorator";
+import type { UserPayload } from "src/common/types/user-payload.type";
+import { UserResponseInterceptor } from "src/common/interceptors/user-response.interceptor";
+
 
 @Controller('users')
+@UseInterceptors(UserResponseInterceptor)
 export class UserController {
     constructor(private readonly userService: UserService) { }
 
     @Post()
-    create(@Body(new ValidationPipe()) createUserDto: CreateUserDto) {
-        return this.userService.create(createUserDto);
+    @HttpCode(201)
+    async create(@Body() createUserDto: CreateUserDto) {
+      return await this.userService.create(createUserDto);
+       
     }
 
     @Get()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    getAll() {
-        return this.userService.findAll();
+    async getAll() {
+        return await this.userService.findAll();
     }
 
     @Get(':id')
+    @HttpCode(200)
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('USER')
-    getOne(@Param('id') id: string) {
-        return this.userService.findOne(id);
+    @Roles('USER', 'ADMIN')
+    async getOne(@Param('id') id: string, @User() user: UserPayload) {
+        if (user.role === 'USER' && user.id !== id)
+            throw new ForbiddenException();
+        return await this.userService.findOne(id);
     }
 
-    @Put(':id')
+    @Patch(':id')
+    @HttpCode(200)
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('USER')
-    update(@Param('id') id: string, @Body(new ValidationPipe()) updateUserDto: UpdateUserDto) {
-        return this.userService.updateService(id, updateUserDto);
+    async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @User() user: UserPayload) {
+        if (user.id !== id) {
+            throw new ForbiddenException('You are not authorized to access this resource');
+        }
+        return await this.userService.updateService(id, updateUserDto);
     }
 
     @Delete(':id')
+    @HttpCode(200)
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('USER')
-    delete(@Param('id') id: string) {
-        return this.userService.deleteService(id);
+    async delete(@Param('id') id: string, @User() user: UserPayload) {
+        if (user.id !== id) {
+            throw new ForbiddenException('You are not authorized to access this resource');
+        }
+        await this.userService.deleteService(id);
+        return { message: "User deleted successfully" };
     }
 }
