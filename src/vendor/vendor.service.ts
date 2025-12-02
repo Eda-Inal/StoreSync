@@ -1,10 +1,7 @@
 import { Injectable, ConflictException, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CreateVendorDto } from "./dtos/create-vendor.dto";
-import { ResponseVendorDto } from "./dtos/response-vendor.dto";
-import { UpdateVendorDto } from "./dtos/update-vendor.dto";
 import * as bcrypt from 'bcrypt';
-import { sendResponse, sendError } from "src/helper/response.helper";
 import type { User } from "generated/prisma";
 
 @Injectable()
@@ -49,61 +46,30 @@ export class VendorService {
             return vendorsWithoutPassword;
         }
         catch (error) {
-            throw new InternalServerErrorException('Could not retrieve vendors');
+            throw new InternalServerErrorException('Failed to retrieve vendors');
         }
 
     }
 
     async findOne(id: string): Promise<Omit<User, 'password'>> {
-        try{
+        try {
             const vendor = await this.prisma.user.findUnique({
                 where: { id }
             });
             if (!vendor || vendor.role !== 'VENDOR') {
-               throw new NotFoundException('Vendor not found');
+                throw new NotFoundException('Vendor not found');
             }
             const { password, ...vendorWithoutPassword } = vendor;
-        return vendorWithoutPassword;
+            return vendorWithoutPassword;
         }
-        catch(error){
-            if(error instanceof NotFoundException){
+        catch (error) {
+            if (error instanceof NotFoundException) {
                 throw error;
             }
-            throw new InternalServerErrorException('Could not retrieve vendor');
+            throw new InternalServerErrorException('Failed to retrieve vendor');
         }
-       
+
     }
 
-    async updateService(id: string, updateVendorDto: UpdateVendorDto): Promise<{ success: boolean, data: ResponseVendorDto } | { success: boolean, statusCode: number, message: string }> {
-        const vendor = await this.prisma.user.findUnique({
-            where: { id }
-        });
-        if (!vendor || vendor.role !== 'VENDOR') {
-            return sendError('Vendor not found', 404);
-        }
-        const updateData: any = {};
-        if (updateVendorDto.name) updateData.name = updateVendorDto.name;
-        if (updateVendorDto.email) updateData.email = updateVendorDto.email;
-        if (updateVendorDto.password) {
-            updateData.password = await bcrypt.hash(updateVendorDto.password, 10);
-        }
-        const updatedVendor = await this.prisma.user.update({
-            where: { id },
-            data: updateData
-        });
-        const { password, ...vendorWithoutPassword } = updatedVendor;
-        return sendResponse(vendorWithoutPassword);
-    }
-
-    async deleteService(id: string): Promise<{ success: boolean, data: { message: string } } | { success: boolean, statusCode: number, message: string }> {
-        const vendor = await this.prisma.user.findUnique({
-            where: { id }
-        });
-        if (!vendor || vendor.role !== 'VENDOR') {
-            return sendError('Vendor not found', 404);
-        }
-        await this.prisma.user.delete({ where: { id } });
-        return sendResponse({ message: 'Vendor deleted successfully' });
-    }
 }
 
