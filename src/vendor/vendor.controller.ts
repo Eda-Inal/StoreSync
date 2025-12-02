@@ -48,8 +48,17 @@ export class VendorController {
     }
 
     @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.vendorService.findOne(id);
+    async findOne(@Param('id') id: string) {
+         const vendor = await this.vendorService.findOne(id);
+         const responseVendorDto: ResponseVendorDto = {
+            id: vendor.id,
+            name: vendor.name,
+            email: vendor.email,
+            role: vendor.role,
+            createdAt: vendor.createdAt,
+            updatedAt: vendor.updatedAt
+         }
+         return responseVendorDto;
     }
 
     @Put(':id')

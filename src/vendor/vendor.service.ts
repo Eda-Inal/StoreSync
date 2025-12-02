@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, InternalServerErrorException } from "@nestjs/common";
+import { Injectable, ConflictException, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CreateVendorDto } from "./dtos/create-vendor.dto";
 import { ResponseVendorDto } from "./dtos/response-vendor.dto";
@@ -54,15 +54,24 @@ export class VendorService {
 
     }
 
-    async findOne(id: string): Promise<{ success: boolean, data: ResponseVendorDto } | { success: boolean, statusCode: number, message: string }> {
-        const vendor = await this.prisma.user.findUnique({
-            where: { id }
-        });
-        if (!vendor || vendor.role !== 'VENDOR') {
-            return sendError('Vendor not found', 404);
+    async findOne(id: string): Promise<Omit<User, 'password'>> {
+        try{
+            const vendor = await this.prisma.user.findUnique({
+                where: { id }
+            });
+            if (!vendor || vendor.role !== 'VENDOR') {
+               throw new NotFoundException('Vendor not found');
+            }
+            const { password, ...vendorWithoutPassword } = vendor;
+        return vendorWithoutPassword;
         }
-        const { password, ...vendorWithoutPassword } = vendor;
-        return sendResponse(vendorWithoutPassword);
+        catch(error){
+            if(error instanceof NotFoundException){
+                throw error;
+            }
+            throw new InternalServerErrorException('Could not retrieve vendor');
+        }
+       
     }
 
     async updateService(id: string, updateVendorDto: UpdateVendorDto): Promise<{ success: boolean, data: ResponseVendorDto } | { success: boolean, statusCode: number, message: string }> {
