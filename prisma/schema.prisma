@@ -117,12 +117,12 @@ model Product {
   description String
   price       Float    @default(0)
   stock       Int      @default(0)
-  vendorId    String?
+  vendorId    String
   categoryId  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  vendor        Vendor?         @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  vendor        Vendor       @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   stockLogs     StockLog[]
   favoritedBy   User[]          @relation("UserFavorites")
