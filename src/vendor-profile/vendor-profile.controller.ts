@@ -25,17 +25,17 @@ export class VendorProfileController {
     return profile;
 
   }
-  @Get('me')
+  @Get()
   async findMe(@User() user: UserPayload) {
     const profile = await this.vendorProfileService.findMe(user.id);
     return profile;
   }
-  @Put('me')
+  @Put()
   async updateMe(@Body() updateVendorProfileDto: UpdateVendorProfileDto, @User() user: UserPayload) {
     const profile = await this.vendorProfileService.updateMe(updateVendorProfileDto, user.id);
     return profile;
   }
-  @Delete('me')
+  @Delete()
   async deleteMe(@User() user: UserPayload) {
     await this.vendorProfileService.deleteMe(user.id);
     return sendResponse({ message: 'Vendor profile deleted successfully' });

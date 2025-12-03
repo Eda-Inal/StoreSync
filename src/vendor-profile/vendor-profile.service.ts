@@ -1,24 +1,28 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, ForbiddenException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CreateVendorProfileDto } from "./create-vendor-profile.dto";
 import { ConflictException, InternalServerErrorException } from "@nestjs/common";
 import { Vendor } from "generated/prisma";
 import { UpdateVendorProfileDto } from "./update-vendor-profile.dto";
 
-
-
 @Injectable()
 export class VendorProfileService {
     constructor(private readonly prisma: PrismaService) { }
-    async create(createVendorProfileDto: CreateVendorProfileDto, userId: string): Promise<Vendor> {
 
+    async create(createVendorProfileDto: CreateVendorProfileDto, userId: string): Promise<Vendor> {
         try {
             const vendor = await this.prisma.vendor.findUnique({
                 where: { userId: userId }
             });
-            if (vendor) {
-                throw new ConflictException('Vendor profile already exists');
+
+            if (vendor && vendor.deletedAt === null) {
+                throw new ConflictException('A vendor profile already exists for this account.');
             }
+
+            if (vendor && vendor.deletedAt !== null) {
+                throw new ForbiddenException('Your vendor profile has been deleted and cannot be recreated.');
+            }
+
             const createdVendorProfile = await this.prisma.vendor.create({
                 data: {
                     userId: userId,
@@ -43,18 +47,24 @@ export class VendorProfileService {
             if (error instanceof ConflictException) {
                 throw error;
             }
-            throw new InternalServerErrorException('Failed to create vendor profile')
+            throw new InternalServerErrorException('Failed to create vendor profile');
         }
-
     }
+
     async findMe(userId: string): Promise<Vendor> {
         try {
             const vendor = await this.prisma.vendor.findUnique({
                 where: { userId: userId }
             });
+
             if (!vendor) {
                 throw new NotFoundException('Vendor profile not found');
             }
+
+            if (vendor.deletedAt !== null) {
+                throw new NotFoundException('Vendor profile not found');
+            }
+
             return vendor;
         } catch (error) {
             if (error instanceof NotFoundException) {
@@ -63,22 +73,32 @@ export class VendorProfileService {
             throw new InternalServerErrorException('Failed to retrieve vendor profile');
         }
     }
+
     async updateMe(updateVendorProfileDto: UpdateVendorProfileDto, userId: string): Promise<Vendor> {
         try {
             const vendor = await this.prisma.vendor.findUnique({
                 where: { userId: userId }
             });
+
             if (!vendor) {
                 throw new NotFoundException('Vendor profile not found');
             }
+
+            if (vendor.deletedAt !== null) {
+                throw new NotFoundException('Vendor profile not found');
+            }
+
             if (updateVendorProfileDto.slug) {
                 const vendorWithSameSlug = await this.prisma.vendor.findUnique({
                     where: { slug: updateVendorProfileDto.slug }
                 });
-                if (vendorWithSameSlug && vendorWithSameSlug.id !== vendor.id) {
-                    throw new ConflictException('Slug already exists');
-                }
+
+                if (vendorWithSameSlug && vendorWithSameSlug.id !== vendor.id)
+                    if (vendorWithSameSlug.deletedAt === null) {
+                        throw new ConflictException('Slug already exists');
+                    }
             }
+
             const updatedVendor = await this.prisma.vendor.update({
                 where: { userId: userId },
                 data: {
@@ -102,35 +122,41 @@ export class VendorProfileService {
             throw new InternalServerErrorException('Failed to update vendor profile');
         }
     }
+
     async deleteMe(userId: string): Promise<void> {
-        try{
+        try {
             const vendor = await this.prisma.vendor.findUnique({
-                where:{userId:userId}
+                where: { userId: userId }
             });
-            if(!vendor){
+
+            if (!vendor) {
                 throw new NotFoundException('Vendor profile not found');
             }
+
             const orderCount = await this.prisma.order.count({
-                where:{vendorId:vendor.id}
-        })
-            if(orderCount > 0){
-                throw new ConflictException('You have orders associated with your profile, ');
+                where: { vendorId: vendor.id }
+            });
+
+            if (orderCount > 0) {
+                throw new ConflictException('You have orders associated with your profile.');
             }
+
+            if (vendor.deletedAt !== null) {
+                throw new ForbiddenException('Your vendor profile has already been deleted.');
+            }
+
             await this.prisma.vendor.update({
-                where:{userId:userId},
-                data:{
-                    deletedAt:new Date(),
-                    isActive:false
+                where: { userId: userId },
+                data: {
+                    deletedAt: new Date()
                 }
             });
 
-
-        }catch(error){
-            if( error instanceof NotFoundException){
+        } catch (error) {
+            if (error instanceof NotFoundException) {
                 throw error;
             }
             throw new InternalServerErrorException('Failed to delete vendor profile');
         }
     }
-
 }
