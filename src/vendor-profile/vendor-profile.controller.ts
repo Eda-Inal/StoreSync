@@ -10,7 +10,7 @@ import { User } from "src/common/decorators/user.decorator";
 import type { UserPayload } from "src/common/types/user-payload.type";
 import { VendorProfileResponseInterceptor } from "src/common/interceptors/vendor-profile.interceptor";
 
-@Controller('vendor-profiles')
+@Controller('vendor/profiles')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('VENDOR')
 @UseInterceptors(VendorProfileResponseInterceptor)
