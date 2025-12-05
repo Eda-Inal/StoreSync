@@ -48,5 +48,21 @@ export class ProductsController {
         return responseProductsDto;
     }
 
+    @Get(':id')
+    async findOne(@Param('id') id: string, @User() user: UserPayload) {
+        const product = await this.productsService.findOne(id, user.id);
+        const responseProductDto: ResponseProductDto = {
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            stock: product.stock,
+            categoryId: product.categoryId,
+            createdAt: product.createdAt,
+            updatedAt: product.updatedAt,
+        };
+        return responseProductDto;
+    }
+
 
 }

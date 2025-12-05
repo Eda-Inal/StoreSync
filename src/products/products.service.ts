@@ -72,4 +72,36 @@ export class ProductsService {
             throw new InternalServerErrorException('Failed to retrieve products');
         }
     }
+
+    async findOne(productId: string, userId: string): Promise<Product> {
+        try {
+            const vendor = await this.prisma.vendor.findUnique({
+                where: { userId: userId }
+            });
+            if (!vendor) {
+                throw new ForbiddenException('Vendor not found');
+            }
+            if (vendor.deletedAt !== null) {
+                throw new ForbiddenException('Vendor account is inactive');
+            }
+            const product = await this.prisma.product.findFirst({
+                where: {
+                    id: productId,
+                    vendorId: vendor.id,
+                    deletedAt: null
+                }
+            });
+            if (!product) {
+                throw new NotFoundException('Product not found');
+            }
+            return product;
+        }
+        catch (error: any) {
+            if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to retrieve product');
+
+        }
+    }
 }
