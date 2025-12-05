@@ -1,4 +1,4 @@
-import { Controller, HttpCode, Post, Body, Get, Param } from "@nestjs/common";
+import { Controller, HttpCode, Post, Body, Get, Param, Put } from "@nestjs/common";
 import { ProductsService } from "./products.service";
 import { JwtAuthGuard } from "src/auth/guards/jwt.guard";
 import { RolesGuard } from "src/auth/guards/roles.guard";
@@ -6,6 +6,7 @@ import { Roles } from "src/auth/decorators/roles.decorator";
 import { UseGuards } from "@nestjs/common";
 import { CreateProductDto } from "./dtos/create-product.dto";
 import { ResponseProductDto } from "./dtos/response-product.dto";
+import { UpdateProductDto } from "./dtos/update-product.dto";
 import { User } from "src/common/decorators/user.decorator";
 import type { UserPayload } from "src/common/types/user-payload.type";
 
@@ -64,5 +65,20 @@ export class ProductsController {
         return responseProductDto;
     }
 
+    @Put(':id')
+    async update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto, @User() user: UserPayload) {
+        const product = await this.productsService.update(id, updateProductDto, user.id);
+        const responseProductDto: ResponseProductDto = {
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            stock: product.stock,
+            categoryId: product.categoryId,
+            createdAt: product.createdAt,
+            updatedAt: product.updatedAt,
+        };
+        return responseProductDto;
+    }
 
 }
