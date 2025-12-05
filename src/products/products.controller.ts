@@ -1,4 +1,4 @@
-import { Controller, HttpCode, Post, Body, Get, Param, Put } from "@nestjs/common";
+import { Controller, HttpCode, Post, Body, Get, Param, Put,Delete } from "@nestjs/common";
 import { ProductsService } from "./products.service";
 import { JwtAuthGuard } from "src/auth/guards/jwt.guard";
 import { RolesGuard } from "src/auth/guards/roles.guard";
@@ -81,4 +81,9 @@ export class ProductsController {
         return responseProductDto;
     }
 
+    @Delete(':id')
+    async delete(@Param('id') id: string, @User() user: UserPayload) {
+        await this.productsService.delete(id, user.id);
+        return { message: "Product deleted successfully" };
+    }
 }

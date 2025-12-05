@@ -169,4 +169,34 @@ export class ProductsService {
             throw new InternalServerErrorException('Failed to update product');
         }
     }
+
+    async delete(productId: string, userId: string): Promise<void> {
+        try{
+            const vendor = await this.prisma.vendor.findUnique({
+                where: { userId: userId }
+            });
+            if (!vendor) {
+                throw new ForbiddenException('Vendor not found');
+            }
+            if (vendor.deletedAt !== null) {
+                throw new ForbiddenException('Vendor account is inactive');
+            }
+            const product = await this.prisma.product.findFirst({
+                where: { id: productId, vendorId: vendor.id, deletedAt: null }
+            });
+            if (!product) {
+                throw new NotFoundException('Product not found');
+            }
+            await this.prisma.product.update({
+                where: { id: productId },
+                data: { deletedAt: new Date() }
+            });
+        }
+        catch (error: any) {
+            if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to delete product');
+        }
+    }
 }
