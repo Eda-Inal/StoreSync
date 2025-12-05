@@ -17,7 +17,7 @@ export class ProductsService {
             if (vendor.deletedAt !== null) {
                 throw new ForbiddenException('Vendor account is inactive');
             }
-            if(createProductDto.categoryId){
+            if (createProductDto.categoryId) {
                 const category = await this.prisma.category.findUnique({
                     where: { id: createProductDto.categoryId }
                 });
@@ -43,6 +43,33 @@ export class ProductsService {
                 throw error;
             }
             throw new InternalServerErrorException('Failed to create product');
+        }
+    }
+
+    async findAll(userId: string): Promise<Product[]> {
+        try {
+            const vendor = await this.prisma.vendor.findUnique({
+                where: { userId: userId }
+            });
+            if (!vendor) {
+                throw new ForbiddenException('Vendor not found');
+            }
+            if (vendor.deletedAt !== null) {
+                throw new ForbiddenException('Vendor account is inactive');
+            }
+            const products = await this.prisma.product.findMany({
+                where: {
+                    vendorId: vendor.id,
+                    deletedAt: null
+                },
+            });
+            return products
+        }
+        catch (error: any) {
+            if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to retrieve products');
         }
     }
 }

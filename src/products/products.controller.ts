@@ -1,4 +1,4 @@
-import { Controller, HttpCode, Post, Body } from "@nestjs/common";
+import { Controller, HttpCode, Post, Body, Get, Param } from "@nestjs/common";
 import { ProductsService } from "./products.service";
 import { JwtAuthGuard } from "src/auth/guards/jwt.guard";
 import { RolesGuard } from "src/auth/guards/roles.guard";
@@ -31,4 +31,22 @@ export class ProductsController {
         }
         return responseProductDto;
     }
+
+    @Get()
+    async findAll(@User() user: UserPayload) {
+        const products = await this.productsService.findAll(user.id);
+        const responseProductsDto: ResponseProductDto[] = products.map((product) => ({
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            stock: product.stock,
+            categoryId: product.categoryId,
+            createdAt: product.createdAt,
+            updatedAt: product.updatedAt,
+        }));
+        return responseProductsDto;
+    }
+
+
 }
