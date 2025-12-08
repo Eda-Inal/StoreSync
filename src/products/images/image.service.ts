@@ -63,4 +63,54 @@ export class ImageService {
             throw new InternalServerErrorException('Failed to upload image');
         }
     }
+    async delete(userId: string, productId: string, imageId: string): Promise<void> {
+        try {
+            const vendor = await this.prisma.vendor.findUnique({
+                where: { userId }
+            });
+            if (!vendor) {
+                throw new ForbiddenException("Access denied");
+            }
+            if (vendor.deletedAt !== null) {
+                throw new ForbiddenException("Vendor account is inactive");
+            }
+    
+            const image = await this.prisma.productImage.findUnique({
+                where: { id: imageId }
+            });
+            if (!image) {
+                throw new NotFoundException("Image not found");
+            }
+    
+            if (image.productId !== productId) {
+                throw new ForbiddenException("Access denied");
+            }
+    
+            const product = await this.prisma.product.findUnique({
+                where: { id: image.productId }
+            });
+            if (!product) {
+                throw new NotFoundException("Product not found");
+            }
+            if (product.deletedAt !== null) {
+                throw new NotFoundException("Product not found");
+            }
+    
+            if (product.vendorId !== vendor.id) {
+                throw new ForbiddenException("Access denied");
+            }
+    
+            await this.prisma.productImage.delete({
+                where: { id: imageId }
+            });
+        } catch (error: any) {
+            if (
+                error instanceof NotFoundException ||
+                error instanceof ForbiddenException
+            ) {
+                throw error;
+            }
+            throw new InternalServerErrorException("Failed to delete image");
+        }
+    }
 }

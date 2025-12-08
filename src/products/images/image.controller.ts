@@ -1,4 +1,4 @@
-import { Controller, UseInterceptors, UploadedFile, Param, Post, HttpCode } from "@nestjs/common";
+import { Controller, UseInterceptors, UploadedFile, Param, Post, HttpCode, Delete } from "@nestjs/common";
 import { ImageService } from "./image.service";
 import { JwtAuthGuard } from "src/auth/guards/jwt.guard";
 import { RolesGuard } from "src/auth/guards/roles.guard";
@@ -25,8 +25,14 @@ export class ImageController {
         const responseImageDto: ResponseImageDto = {
             id: image.id,
             url: image.url,
-            createdAt: image.createdAt
+            createdAt: image.createdAt,
+            updatedAt: image.createdAt
         };
         return responseImageDto;
+    }
+    @Delete(':imageId')
+    async delete(@User() user: UserPayload, @Param('productId') productId: string, @Param('imageId') imageId: string): Promise<{ message: string }> {
+        await this.imageService.delete(user.id, productId, imageId);
+        return { message: 'Image deleted successfully' };
     }
 }
