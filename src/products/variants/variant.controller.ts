@@ -1,0 +1,35 @@
+import { Controller, Post, HttpCode, Body, Param } from "@nestjs/common";
+import { VariantService } from "./variant.service";
+import { CreateVariantDto } from "./dtos/create-variant.dto";
+import { JwtAuthGuard } from "src/auth/guards/jwt.guard";
+import { RolesGuard } from "src/auth/guards/roles.guard";
+import { Roles } from "src/auth/decorators/roles.decorator";
+import { UseGuards } from "@nestjs/common";
+import { User } from "src/common/decorators/user.decorator";
+import type { UserPayload } from "src/common/types/user-payload.type"
+import { ResponseVariantDto } from "./dtos/response-variant.dto";
+
+@Controller('vendor/products/:productId/variants')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('VENDOR')
+
+export class VariantController {
+    constructor(private readonly variantService: VariantService) { }
+
+    @Post()
+    @HttpCode(201)
+    async create(@Body() createVariantDto: CreateVariantDto, @User() user: UserPayload, @Param('productId') productId: string): Promise<ResponseVariantDto> {
+        const variant = await this.variantService.create(createVariantDto, user.id, productId);
+        const responseVariantDto: ResponseVariantDto = {
+            id: variant.id,
+            name: variant.name,
+            value: variant.value,
+            stock: variant.stock,
+            createdAt: variant.createdAt,
+            updatedAt: variant.updatedAt
+        }
+        return responseVariantDto;
+    }
+
+}
+
