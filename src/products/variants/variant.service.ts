@@ -121,4 +121,48 @@ export class VariantService {
         }
     }
 
+    async delete(userId: string, productId: string, variantId: string): Promise<void> {
+        try {
+            const vendor = await this.prisma.vendor.findUnique({
+                where: { userId: userId }
+            });
+            if (!vendor) {
+                throw new ForbiddenException('Access denied');
+            }
+            if (vendor.deletedAt !== null) {
+                throw new ForbiddenException('Vendor account is inactive');
+            }
+            const variant = await this.prisma.productVariant.findUnique({
+                where: { id: variantId }
+            });
+            if (!variant) {
+                throw new NotFoundException('Variant not found');
+            }
+            if (variant.productId !== productId) {
+                throw new ForbiddenException('Access denied');
+            }
+            const product = await this.prisma.product.findUnique({
+                where: { id: variant.productId }
+            });
+            if (!product) {
+                throw new NotFoundException('Product not found');
+            }
+            if (product.deletedAt !== null) {
+                throw new NotFoundException('Product not found');
+            }
+            if (product.vendorId !== vendor.id) {
+                throw new ForbiddenException('Access denied');
+            }
+            await this.prisma.productVariant.delete({
+                where: { id: variantId }
+            });
+        }
+        catch (error: any) {
+            if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to delete variant');
+        }
+    }
+
 }

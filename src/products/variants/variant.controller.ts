@@ -1,4 +1,4 @@
-import { Controller, Post, HttpCode, Body, Param, Put } from "@nestjs/common";
+import { Controller, Post, HttpCode, Body, Param, Put, Delete } from "@nestjs/common";
 import { VariantService } from "./variant.service";
 import { CreateVariantDto } from "./dtos/create-variant.dto";
 import { JwtAuthGuard } from "src/auth/guards/jwt.guard";
@@ -45,5 +45,11 @@ export class VariantController {
         }
         return responseVariantDto;
     }
+    @Delete(':variantId')
+    async delete(@User() user: UserPayload, @Param('productId') productId: string, @Param('variantId') variantId: string): Promise<{ message: string }> {
+        await this.variantService.delete(user.id, productId, variantId);
+        return { message: 'Variant deleted successfully' };
+    }
 }
+
 
