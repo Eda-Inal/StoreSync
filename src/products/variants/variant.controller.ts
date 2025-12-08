@@ -1,4 +1,4 @@
-import { Controller, Post, HttpCode, Body, Param, Put, Delete } from "@nestjs/common";
+import { Controller, Post, HttpCode, Body, Param, Put, Delete, UseInterceptors } from "@nestjs/common";
 import { VariantService } from "./variant.service";
 import { CreateVariantDto } from "./dtos/create-variant.dto";
 import { JwtAuthGuard } from "src/auth/guards/jwt.guard";
@@ -9,10 +9,12 @@ import { User } from "src/common/decorators/user.decorator";
 import type { UserPayload } from "src/common/types/user-payload.type"
 import { ResponseVariantDto } from "./dtos/response-variant.dto";
 import { UpdateVariantDto } from "./dtos/update-variant.dto";
+import { VendorProductVariantsResponseInterceptor } from "src/common/interceptors/vendor-product-variants.interceptor";
 
 @Controller('vendor/products/:productId/variants')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('VENDOR')
+@UseInterceptors(VendorProductVariantsResponseInterceptor)
 
 export class VariantController {
     constructor(private readonly variantService: VariantService) { }
@@ -21,29 +23,13 @@ export class VariantController {
     @HttpCode(201)
     async create(@Body() createVariantDto: CreateVariantDto, @User() user: UserPayload, @Param('productId') productId: string): Promise<ResponseVariantDto> {
         const variant = await this.variantService.create(createVariantDto, user.id, productId);
-        const responseVariantDto: ResponseVariantDto = {
-            id: variant.id,
-            name: variant.name,
-            value: variant.value,
-            stock: variant.stock,
-            createdAt: variant.createdAt,
-            updatedAt: variant.updatedAt
-        }
-        return responseVariantDto;
+        return variant;
     }
 
     @Put(':variantId')
     async update(@Body() updateVariantDto: UpdateVariantDto, @User() user: UserPayload, @Param('productId') productId: string, @Param('variantId') variantId: string): Promise<ResponseVariantDto> {
         const variant = await this.variantService.update(updateVariantDto, user.id, productId, variantId);
-        const responseVariantDto: ResponseVariantDto = {
-            id: variant.id,
-            name: variant.name,
-            value: variant.value,
-            stock: variant.stock,
-            createdAt: variant.createdAt,
-            updatedAt: variant.updatedAt
-        }
-        return responseVariantDto;
+        return variant;
     }
     @Delete(':variantId')
     async delete(@User() user: UserPayload, @Param('productId') productId: string, @Param('variantId') variantId: string): Promise<{ message: string }> {
