@@ -1,4 +1,4 @@
-import { Controller, Post, HttpCode, Body, Param } from "@nestjs/common";
+import { Controller, Post, HttpCode, Body, Param, Put } from "@nestjs/common";
 import { VariantService } from "./variant.service";
 import { CreateVariantDto } from "./dtos/create-variant.dto";
 import { JwtAuthGuard } from "src/auth/guards/jwt.guard";
@@ -8,6 +8,7 @@ import { UseGuards } from "@nestjs/common";
 import { User } from "src/common/decorators/user.decorator";
 import type { UserPayload } from "src/common/types/user-payload.type"
 import { ResponseVariantDto } from "./dtos/response-variant.dto";
+import { UpdateVariantDto } from "./dtos/update-variant.dto";
 
 @Controller('vendor/products/:productId/variants')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -31,5 +32,18 @@ export class VariantController {
         return responseVariantDto;
     }
 
+    @Put(':variantId')
+    async update(@Body() updateVariantDto: UpdateVariantDto, @User() user: UserPayload, @Param('productId') productId: string, @Param('variantId') variantId: string): Promise<ResponseVariantDto> {
+        const variant = await this.variantService.update(updateVariantDto, user.id, productId, variantId);
+        const responseVariantDto: ResponseVariantDto = {
+            id: variant.id,
+            name: variant.name,
+            value: variant.value,
+            stock: variant.stock,
+            createdAt: variant.createdAt,
+            updatedAt: variant.updatedAt
+        }
+        return responseVariantDto;
+    }
 }
 
