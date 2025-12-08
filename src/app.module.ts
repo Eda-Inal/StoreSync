@@ -8,7 +8,8 @@ import { VendorModule } from './vendor/vendor.module';
 import { VendorProfileModule } from './vendor-profile/vendor-profile.module';
 import { AdminModule } from './admin/admin.module';
 import { ProductsModule } from './products/products.module';
-
+import { VariantModule } from './products/variants/variant.module';
+import { ImageModule } from './products/images/image.module';
 
 @Module({
   imports: [
@@ -24,6 +25,8 @@ import { ProductsModule } from './products/products.module';
     VendorProfileModule,
     AdminModule,
     ProductsModule,
+    VariantModule,
+    ImageModule,
   ],
   controllers: [],
   providers: [],
