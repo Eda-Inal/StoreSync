@@ -1,8 +1,9 @@
-import { Injectable, InternalServerErrorException, ConflictException, NotFoundException } from "@nestjs/common";
+import { Injectable, InternalServerErrorException, ConflictException, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CreateCategoryDto } from "./dtos/create-category.dto";
 import { UpdateCategoryDto } from "./dtos/update-category.dto";
 import type { Category } from "generated/prisma";
+import type { BulkCategoryResult } from "src/common/types/bulk-category.type";
 
 @Injectable()
 export class CategoryService {
@@ -39,8 +40,52 @@ export class CategoryService {
         }
     }
 
+    async createBulk(createCategoryDto: CreateCategoryDto[]): Promise<BulkCategoryResult[]> {
+
+        if (createCategoryDto.length === 0) {
+            throw new BadRequestException('No categories to create');
+        }
+        const results: BulkCategoryResult[] = [];
+        for (const category of createCategoryDto) {
+            try {
+                const trimmed = category.name.trim();
+                const normalizedName = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+                const categoryExists = await this.prisma.category.findFirst({
+                    where: {
+                        name: {
+                            equals: normalizedName,
+                            mode: 'insensitive',
+                        }
+                    }
+                });
+                /// soft-deleted categories are also treated as duplicates.
+                /// system does not allow creating a new category with the same name,
+                /// even if the previous one is soft-deleted.
+
+                if (categoryExists) {
+                    results.push({ success: false, message: 'Category already exists' });
+                    continue;
+                }
+                const createdCategory = await this.prisma.category.create({
+                    data: {
+                        name: normalizedName,
+                        description: category.description,
+                    }
+                });
+                results.push({ success: true, data: createdCategory });
+
+            } catch (error) {
+                results.push({
+                    success: false,
+                    message: "Failed to create category"
+                })
+            }
+        }
+        return results;
+    }
+
     async findAll(): Promise<Category[]> {
-        try{
+        try {
             return await this.prisma.category.findMany();
         }
         catch (error) {

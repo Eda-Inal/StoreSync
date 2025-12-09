@@ -23,6 +23,12 @@ export class CategoryController {
         return await this.categoryService.create(createCategoryDto);
     }
 
+    @Post('bulk')
+    @HttpCode(201)
+    async createBulk(@Body() createCategoryDto: CreateCategoryDto[]) {
+        return await this.categoryService.createBulk(createCategoryDto);
+    }
+
     @Get()
     async findAll() {
         return await this.categoryService.findAll();
