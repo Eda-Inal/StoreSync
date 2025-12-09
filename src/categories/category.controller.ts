@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, Put, Param } from "@nestjs/common";
+import { Controller, Post, Body, HttpCode, Put, Param, Delete } from "@nestjs/common";
 import { CategoryService } from "./category.service";
 import { CreateCategoryDto } from "./dtos/create-category.dto";
 import { ResponseCategoryDto } from "./dtos/response-category.dto";
@@ -42,5 +42,12 @@ export class CategoryController {
             updatedAt: category.updatedAt,
         }
         return responseCategoryDto;
+    }
+
+    @Delete(':id')
+    @HttpCode(204)
+    async delete(@Param('id') id: string) {
+        await this.categoryService.delete(id);
+        return { message: 'Category deleted successfully' };
     }
 }

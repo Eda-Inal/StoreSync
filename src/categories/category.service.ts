@@ -85,4 +85,28 @@ export class CategoryService {
             throw new InternalServerErrorException('Failed to update category');
         }
     }
+
+    async delete(id: string): Promise<void> {
+        try {
+            const category = await this.prisma.category.findUnique({ where: { id } });
+            if (!category) {
+                throw new NotFoundException('Category not found');
+            }
+            if (category.deletedAt !== null) {
+                throw new NotFoundException('Category already deleted');
+            }
+            await this.prisma.category.update(
+                {
+                    where: { id },
+                    data:
+                        { deletedAt: new Date() }
+                });
+        }
+        catch (error) {
+            if (error instanceof NotFoundException || error instanceof ConflictException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Failed to delete category');
+        }
+    }
 }
