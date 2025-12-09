@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, Put, Param, Delete } from "@nestjs/common";
+import { Controller, Post, Body, HttpCode, Put, Param, Delete,Get} from "@nestjs/common";
 import { CategoryService } from "./category.service";
 import { CreateCategoryDto } from "./dtos/create-category.dto";
 import { ResponseCategoryDto } from "./dtos/response-category.dto";
@@ -29,6 +29,19 @@ export class CategoryController {
             updatedAt: category.updatedAt,
         }
         return responseCategoryDto;
+    }
+
+    @Get()
+    async findAll() {
+        const categories = await this.categoryService.findAll();
+        const responseCategoriesDto: ResponseCategoryDto[] = categories.map((category) => ({
+            id: category.id,
+            name: category.name,
+            description: category.description || '',
+            createdAt: category.createdAt,
+            updatedAt: category.updatedAt,
+        }));
+        return responseCategoriesDto;
     }
 
     @Put(':id')

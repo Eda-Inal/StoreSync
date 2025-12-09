@@ -39,6 +39,15 @@ export class CategoryService {
         }
     }
 
+    async findAll(): Promise<Category[]> {
+        try{
+            return await this.prisma.category.findMany();
+        }
+        catch (error) {
+            throw new InternalServerErrorException('Failed to retrieve categories');
+        }
+    }
+
     async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
         try {
             const category = await this.prisma.category.findUnique({
