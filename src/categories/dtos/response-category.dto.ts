@@ -1,7 +1,7 @@
 export class ResponseCategoryDto {
     id: string;
     name: string;
-    description: string;
+    description?: string;
     createdAt: Date;
     updatedAt: Date;
 }
