@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, UseGuards, UseInterceptors, HttpCode, ForbiddenException, Patch } from "@nestjs/common"
+import { Controller, Post, Body, Get, UseGuards, UseInterceptors, HttpCode, Put } from "@nestjs/common"
 import { AdminService } from "./admin.service";
 import { CreateAdminDto } from "./dtos/create-admin.dto";
 import { UpdateAdminDto } from "./dtos/update-admin.dto";
@@ -21,21 +21,17 @@ export class AdminController {
     }
 
 
-    @Get(':id')
+    @Get()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    async findOne(@Param('id') id: string, @User() user: UserPayload) {
-        if (user.id !== id)
-            throw new ForbiddenException('You are not authorized to access this resource');
-        return await this.adminService.findOne(id);
+    async findOne(@User() user: UserPayload) {
+        return await this.adminService.findOne(user.id);
     }
 
-    @Patch(':id')
+    @Put()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    async updateService(@Param('id') id: string, @Body() updateAdminDto: UpdateAdminDto, @User() user: UserPayload) {
-        if (user.id !== id)
-            throw new ForbiddenException('You are not authorized to access this resource');
-        return await this.adminService.updateService(id, updateAdminDto);
+    async update(@Body() updateAdminDto: UpdateAdminDto, @User() user: UserPayload) {
+        return await this.adminService.update(updateAdminDto, user.id);
     }
 }
