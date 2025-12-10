@@ -1,6 +1,7 @@
 import {
   Injectable,
   UnauthorizedException,
+  ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -10,7 +11,6 @@ import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dtos/login.dto';
 import { RegisterDto } from './dtos/register.dto';
 import type { SignOptions } from 'jsonwebtoken';
-import { sendResponse, sendError } from '../helper/response.helper';
 
 interface DeviceInfo {
   deviceName?: string;
@@ -28,7 +28,7 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  async register(registerDto: RegisterDto, deviceInfo?: DeviceInfo): Promise<{success: boolean, data: {access_token: string, refresh_token: string, expires_in: number, user: {id: string, email: string, name: string, role: string}}} | {success: boolean, statusCode: number, message: string}> {
+  async register(registerDto: RegisterDto, deviceInfo?: DeviceInfo) {
     const { email, password, name } = registerDto;
 
     // Check if user already exists
@@ -37,7 +37,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      return sendError('User with this email already exists', 409);
+      throw new ConflictException('User with this email already exists');
     }
 
     // Hash password
@@ -60,20 +60,14 @@ export class AuthService {
         deviceInfo,
       );
 
-    return sendResponse({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_in: 900, // 15 minutes in seconds
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-    });
+    return {
+      user,
+      accessToken,
+      refreshToken,
+    };
   }
 
-  async login(loginDto: LoginDto, deviceInfo?: DeviceInfo): Promise<{success: boolean, data: {access_token: string, refresh_token: string, expires_in: number, user: {id: string, email: string, name: string, role: string}}} | {success: boolean, statusCode: number, message: string}> {
+  async login(loginDto: LoginDto, deviceInfo?: DeviceInfo) {
     const { email, password } = loginDto;
 
     // Find user
@@ -82,7 +76,7 @@ export class AuthService {
     });
 
     if (!user) {
-      return sendError('Invalid credentials', 401);
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     // Verify password
@@ -92,7 +86,7 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      return sendError('Invalid credentials', 401);
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     // Generate both tokens
@@ -103,17 +97,11 @@ export class AuthService {
         deviceInfo,
       );
 
-    return sendResponse({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_in: 900, // 15 minutes in seconds
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-    });
+    return {
+      user,
+      accessToken,
+      refreshToken,
+    };
   }
 
   async validateUser(userId: string) {

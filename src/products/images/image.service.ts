@@ -1,14 +1,15 @@
 import { Injectable, ForbiddenException, NotFoundException, BadRequestException, InternalServerErrorException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import type { ProductImage } from "generated/prisma";
-import type { StorageProvider } from "./providers/storage-provider.interface";
+import { LocalStorageProvider } from "./providers/local-storage.provider";
+import 'multer';
 
 
 @Injectable()
 export class ImageService {
     constructor(
         private readonly prisma: PrismaService,
-        private readonly storageProvider: StorageProvider
+        private readonly storageProvider: LocalStorageProvider
     ) { }
 
     async upload(userId: string, productId: string, file: Express.Multer.File): Promise<ProductImage> {

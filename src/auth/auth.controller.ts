@@ -9,6 +9,9 @@ import {
   Request,
   Response,
   HttpCode,
+  UseInterceptors,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type {
   Request as ExpressRequest,
@@ -20,7 +23,7 @@ import { RefreshTokenService } from './refresh-token.service';
 import { LoginDto } from './dtos/login.dto';
 import { RegisterDto } from './dtos/register.dto';
 import { JwtAuthGuard } from './guards/jwt.guard';
-import { sendResponse, sendError } from '../helper/response.helper';
+import { AuthResponseInterceptor } from '../common/interceptors/auth-response.interceptor';
 
 interface DeviceInfo {
   deviceName?: string;
@@ -30,6 +33,7 @@ interface DeviceInfo {
 }
 
 @Controller('auth')
+@UseInterceptors(AuthResponseInterceptor)
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -38,25 +42,31 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @HttpCode(201)
   async register(
     @Body() registerDto: RegisterDto,
     @Request() req: ExpressRequest,
     @Response({ passthrough: true }) res: ExpressResponse,
   ) {
     const deviceInfo = this.extractDeviceInfo(req);
-    const result = await this.authService.register(registerDto, deviceInfo);
-
-    // Check if result is an error response
-    if (!result.success || !('data' in result)) {
-      return result;
-    }
+    const { user, accessToken, refreshToken } = await this.authService.register(registerDto, deviceInfo);
 
     // Set httpOnly cookie for browsers
-    this.setRefreshTokenCookie(res, result.data.refresh_token);
+    this.setRefreshTokenCookie(res, refreshToken);
 
-    // Omit refresh token from body
-    const { refresh_token, ...responseBody } = result.data;
-    return sendResponse(responseBody);
+    // Build API response format (remove password from user)
+    const { password, ...userWithoutPassword } = user;
+
+    return {
+      access_token: accessToken,
+      expires_in: 900,
+      user: {
+        id: userWithoutPassword.id,
+        email: userWithoutPassword.email,
+        name: userWithoutPassword.name,
+        role: userWithoutPassword.role,
+      },
+    };
   }
 
   @Post('login')
@@ -66,18 +76,24 @@ export class AuthController {
     @Response({ passthrough: true }) res: ExpressResponse,
   ) {
     const deviceInfo = this.extractDeviceInfo(req);
-    const result = await this.authService.login(loginDto, deviceInfo);
-
-    // Check if result is an error response
-    if (!result.success || !('data' in result)) {
-      return result;
-    }
+    const { user, accessToken, refreshToken } = await this.authService.login(loginDto, deviceInfo);
 
     // Set httpOnly cookie for browsers
-    this.setRefreshTokenCookie(res, result.data.refresh_token);
+    this.setRefreshTokenCookie(res, refreshToken);
 
-    const { refresh_token, ...responseBody } = result.data;
-    return sendResponse(responseBody);
+    // Build API response format (remove password from user)
+    const { password, ...userWithoutPassword } = user;
+
+    return {
+      access_token: accessToken,
+      expires_in: 900,
+      user: {
+        id: userWithoutPassword.id,
+        email: userWithoutPassword.email,
+        name: userWithoutPassword.name,
+        role: userWithoutPassword.role,
+      },
+    };
   }
 
   @Post('refresh')
@@ -88,34 +104,30 @@ export class AuthController {
     const refreshToken = req.cookies?.refresh_token;
 
     if (!refreshToken) {
-      return sendError('Refresh token not provided', 401);
+      throw new UnauthorizedException('Refresh token not provided');
     }
 
-    try {
-      const deviceInfo = this.extractDeviceInfo(req);
+    const deviceInfo = this.extractDeviceInfo(req);
 
-      // MANDATORY ROTATION
-      const rotated = await this.refreshTokenService.rotateRefreshToken(
-        refreshToken,
-        deviceInfo,
-      );
+    // MANDATORY ROTATION
+    const rotated = await this.refreshTokenService.rotateRefreshToken(
+      refreshToken,
+      deviceInfo,
+    );
 
-      // Generate new access token
-      const accessToken = await this.authService.generateAccessToken(
-        rotated.user.id,
-        rotated.user.email,
-      );
+    // Generate new access token
+    const accessToken = await this.authService.generateAccessToken(
+      rotated.user.id,
+      rotated.user.email,
+    );
 
-      // Set new refresh token in cookie
-      this.setRefreshTokenCookie(res, rotated.token);
+    // Set new refresh token in cookie
+    this.setRefreshTokenCookie(res, rotated.token);
 
-      return sendResponse({
-        access_token: accessToken,
-        expires_in: 900, // 15 minutes in seconds
-      });
-    } catch (error) {
-      return sendError('Invalid or expired refresh token', 401);
-    }
+    return {
+      access_token: accessToken,
+      expires_in: 900, // 15 minutes in seconds
+    };
   }
 
   @Post('logout')
@@ -136,19 +148,19 @@ export class AuthController {
       'refresh_token';
     res.clearCookie(cookieName);
 
-    return sendResponse({ message: 'Logged out successfully' });
+    return { message: 'Logged out successfully' };
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   async getProfile(@Request() req) {
-    return sendResponse({
+    return {
       user: {
         id: req.user.id,
         email: req.user.email,
         name: req.user.name,
       },
-    });
+    };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -157,7 +169,7 @@ export class AuthController {
     const sessions = await this.refreshTokenService.getUserSessions(
       req.user.id,
     );
-    return sendResponse({ sessions });
+    return { sessions };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -174,7 +186,7 @@ export class AuthController {
     const session = sessions.find((s) => s.id === sessionId);
 
     if (!session) {
-      return sendError('Session not found or does not belong to you', 404);
+      throw new NotFoundException('Session not found or does not belong to you');
     }
 
     // Revoke the session

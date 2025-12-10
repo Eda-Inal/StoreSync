@@ -7,8 +7,9 @@ import { UseGuards } from "@nestjs/common";
 import { User } from "src/common/decorators/user.decorator";
 import { ResponseImageDto } from "./dtos/response-image.dto";
 import type { UserPayload } from "src/common/types/user-payload.type";
-import type { Express } from 'express';
 import { FileInterceptor } from "@nestjs/platform-express";
+import type { Express } from 'express';
+import 'multer';
 
 
 @Controller('vendor/products/:productId/images')
