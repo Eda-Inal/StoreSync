@@ -24,8 +24,11 @@ export class ProductsService {
                 if (!category) {
                     throw new NotFoundException('Category not found');
                 }
+                if (category.deletedAt !== null) {
+                    throw new NotFoundException('Category is deleted');
+                }
             }
-            //should add category id soft delete check logic
+
             const product = await this.prisma.product.create({
                 data: {
                     name: createProductDto.name,
@@ -150,12 +153,14 @@ export class ProductsService {
                     throw new NotFoundException('Category not found');
                 }
 
-                //if soft delete is added, check if category is deleted
+                if (category.deletedAt !== null) {
+                    throw new NotFoundException('Category is deleted');
+                }
 
                 updateData.categoryId = updateProductDto.categoryId;
             }
             const updatedProduct = await this.prisma.product.update({
-                where: { id: productId},
+                where: { id: productId },
                 data: updateData
             });
             return updatedProduct;
@@ -171,7 +176,7 @@ export class ProductsService {
     }
 
     async delete(productId: string, userId: string): Promise<void> {
-        try{
+        try {
             const vendor = await this.prisma.vendor.findUnique({
                 where: { userId: userId }
             });
