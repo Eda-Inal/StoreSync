@@ -11,6 +11,10 @@ export class VendorProductVariantsResponseInterceptor implements NestInterceptor
     intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
         return next.handle().pipe(
             map((data) => {
+                if (data === undefined || data === null) {
+                    return data;
+                }
+
                 // array (GET /vendor/products/:productId/variants)
                 if (Array.isArray(data)) {
                     const response = data.map((variant) => this.toVendorProductVariantsResponseDto(variant));

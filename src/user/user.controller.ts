@@ -52,7 +52,7 @@ export class UserController {
     }
 
     @Delete(':id')
-    @HttpCode(200)
+    @HttpCode(204)
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('USER')
     async delete(@Param('id') id: string, @User() user: UserPayload) {
@@ -60,6 +60,5 @@ export class UserController {
             throw new ForbiddenException('You are not authorized to access this resource');
         }
         await this.userService.deleteService(id);
-        return { message: "User deleted successfully" };
     }
 }

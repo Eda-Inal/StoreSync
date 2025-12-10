@@ -44,8 +44,8 @@ export class ProductsController {
     }
 
     @Delete(':id')
+    @HttpCode(204)
     async delete(@Param('id') id: string, @User() user: UserPayload) {
         await this.productsService.delete(id, user.id);
-        return sendResponse({ message: "Product deleted successfully" });
     }
 }

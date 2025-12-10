@@ -31,8 +31,8 @@ export class ImageController {
         return responseImageDto;
     }
     @Delete(':imageId')
-    async delete(@User() user: UserPayload, @Param('productId') productId: string, @Param('imageId') imageId: string): Promise<{ message: string }> {
+    @HttpCode(204)
+    async delete(@User() user: UserPayload, @Param('productId') productId: string, @Param('imageId') imageId: string): Promise<void> {
         await this.imageService.delete(user.id, productId, imageId);
-        return { message: 'Image deleted successfully' };
     }
 }

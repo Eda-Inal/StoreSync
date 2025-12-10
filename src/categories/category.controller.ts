@@ -50,6 +50,6 @@ export class CategoryController {
     @Delete(':id')
     @HttpCode(204)
     async delete(@Param('id') id: string) {
-        return await this.categoryService.delete(id);
+        await this.categoryService.delete(id);
     }
 }

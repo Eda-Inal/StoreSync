@@ -8,6 +8,7 @@ import {
   UseGuards,
   Request,
   Response,
+  HttpCode,
 } from '@nestjs/common';
 import type {
   Request as ExpressRequest,
@@ -161,6 +162,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Delete('sessions/:sessionId')
+  @HttpCode(204)
   async revokeSession(
     @Param('sessionId') sessionId: string,
     @Request() req,
@@ -177,8 +179,6 @@ export class AuthController {
 
     // Revoke the session
     await this.refreshTokenService.revokeRefreshToken(sessionId);
-
-    return sendResponse({ message: 'Session revoked successfully' });
   }
 
   // Helper methods

@@ -36,9 +36,9 @@ export class VendorProfileController {
     return profile;
   }
   @Delete()
+  @HttpCode(204)
   async deleteMe(@User() user: UserPayload) {
     await this.vendorProfileService.deleteMe(user.id);
-    return sendResponse({ message: 'Vendor profile deleted successfully' });
   }
 }
 

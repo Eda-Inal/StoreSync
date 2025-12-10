@@ -32,9 +32,9 @@ export class VariantController {
         return variant;
     }
     @Delete(':variantId')
-    async delete(@User() user: UserPayload, @Param('productId') productId: string, @Param('variantId') variantId: string): Promise<{ message: string }> {
+    @HttpCode(204)
+    async delete(@User() user: UserPayload, @Param('productId') productId: string, @Param('variantId') variantId: string): Promise<void> {
         await this.variantService.delete(user.id, productId, variantId);
-        return { message: 'Variant deleted successfully' };
     }
 }
 

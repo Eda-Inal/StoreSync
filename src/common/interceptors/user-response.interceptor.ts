@@ -11,6 +11,10 @@ export class UserResponseInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       map((data) => {
+        if (data === undefined || data === null) {
+          return data;
+        }
+
         // array (GET /users)
         if (Array.isArray(data)) {
           const response = data.map((user) => this.toUserResponseDto(user));
