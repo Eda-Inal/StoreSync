@@ -1,7 +1,6 @@
 import { Controller, Post, Body, HttpCode, Put, Param, Delete, Get, UseInterceptors } from "@nestjs/common";
 import { CategoryService } from "./category.service";
 import { CreateCategoryDto } from "./dtos/create-category.dto";
-import { ResponseCategoryDto } from "./dtos/response-category.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -36,15 +35,7 @@ export class CategoryController {
 
     @Put(':id')
     async update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
-        const category = await this.categoryService.update(id, updateCategoryDto);
-        const responseCategoryDto: ResponseCategoryDto = {
-            id: category.id,
-            name: category.name,
-            description: category.description || '',
-            createdAt: category.createdAt,
-            updatedAt: category.updatedAt,
-        }
-        return responseCategoryDto;
+        return await this.categoryService.update(id, updateCategoryDto);
     }
 
     @Delete(':id')

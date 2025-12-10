@@ -5,7 +5,6 @@ import { UpdateVendorProfileDto } from "./update-vendor-profile.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt.guard";
 import { RolesGuard } from "src/auth/guards/roles.guard";
 import { Roles } from "src/auth/decorators/roles.decorator";
-import { sendResponse } from "src/helper/response.helper";
 import { User } from "src/common/decorators/user.decorator";
 import type { UserPayload } from "src/common/types/user-payload.type";
 import { VendorProfileResponseInterceptor } from "src/common/interceptors/vendor-profile.interceptor";

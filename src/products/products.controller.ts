@@ -10,7 +10,6 @@ import { UpdateProductDto } from "./dtos/update-product.dto";
 import { User } from "src/common/decorators/user.decorator";
 import type { UserPayload } from "src/common/types/user-payload.type";
 import { VendorProductsResponseInterceptor } from "src/common/interceptors/vendor-products.interceptor";
-import { sendResponse } from "src/helper/response.helper";
 
 @Controller('vendor/products')
 @UseGuards(JwtAuthGuard, RolesGuard)

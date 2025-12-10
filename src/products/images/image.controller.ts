@@ -5,31 +5,25 @@ import { RolesGuard } from "src/auth/guards/roles.guard";
 import { Roles } from "src/auth/decorators/roles.decorator";
 import { UseGuards } from "@nestjs/common";
 import { User } from "src/common/decorators/user.decorator";
-import { ResponseImageDto } from "./dtos/response-image.dto";
 import type { UserPayload } from "src/common/types/user-payload.type";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type { Express } from 'express';
 import 'multer';
+import { VendorProductImagesResponseInterceptor } from "src/common/interceptors/vendor-product-images.interceptor";
 
 
 @Controller('vendor/products/:productId/images')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('VENDOR')
+@UseInterceptors(VendorProductImagesResponseInterceptor)
 
 export class ImageController {
     constructor(private readonly imageService: ImageService) { }
     @Post()
     @HttpCode(201)
     @UseInterceptors(FileInterceptor('file'))
-    async upload(@User() user: UserPayload, @Param('productId') productId: string, @UploadedFile() file: Express.Multer.File): Promise<ResponseImageDto> {
-        const image = await this.imageService.upload(user.id, productId, file);
-        const responseImageDto: ResponseImageDto = {
-            id: image.id,
-            url: image.url,
-            createdAt: image.createdAt,
-            updatedAt: image.createdAt
-        };
-        return responseImageDto;
+    async upload(@User() user: UserPayload, @Param('productId') productId: string, @UploadedFile() file: Express.Multer.File) {
+        return await this.imageService.upload(user.id, productId, file);
     }
     @Delete(':imageId')
     @HttpCode(204)
