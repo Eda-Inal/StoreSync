@@ -64,7 +64,7 @@ export class VariantService {
     async update(updateVariantDto: UpdateVariantDto, userId: string, productId: string, variantId: string): Promise<ProductVariant> {
         try {
             const vendor = await this.prisma.vendor.findUnique({
-                where: { userId: userId }
+                where: { userId }
             });
             if (!vendor) {
                 throw new ForbiddenException('Vendor not found');
@@ -75,38 +75,39 @@ export class VariantService {
             const variant = await this.prisma.productVariant.findUnique({
                 where: { id: variantId }
             });
-            if (!variant) {
+            if (!variant || variant.deletedAt !== null) {
                 throw new NotFoundException('Variant not found');
             }
             if (variant.productId !== productId) {
                 throw new ForbiddenException('Access denied');
             }
-
             const product = await this.prisma.product.findUnique({
                 where: { id: variant.productId }
             });
-            if (!product) {
-                throw new NotFoundException('Product not found');
-            }
-            if (product.deletedAt !== null) {
+            if (!product || product.deletedAt !== null) {
                 throw new NotFoundException('Product not found');
             }
             if (product.vendorId !== vendor.id) {
                 throw new ForbiddenException('Access denied');
             }
+            if (product.productType !== ProductType.VARIANTED) {
+                throw new BadRequestException('Variants are only allowed for VARIANTED products');
+            }
             if (updateVariantDto.name !== undefined || updateVariantDto.value !== undefined) {
                 const existingVariant = await this.prisma.productVariant.findFirst({
                     where: {
                         productId: variant.productId,
-                        value: updateVariantDto.value ? updateVariantDto.value : variant.value,
-                        name: updateVariantDto.name ? updateVariantDto.name : variant.name
+                        value: updateVariantDto.value ?? variant.value,
+                        name: updateVariantDto.name ?? variant.name
                     }
                 });
                 if (existingVariant && existingVariant.id !== variantId) {
                     throw new ConflictException('Variant already exists');
                 }
             }
-
+            if (updateVariantDto.stock !== undefined && updateVariantDto.stock < 0) {
+                throw new BadRequestException('Stock cannot be negative');
+            }
             const updatedVariant = await this.prisma.productVariant.update({
                 where: { id: variantId },
                 data: {
@@ -116,9 +117,13 @@ export class VariantService {
                 }
             });
             return updatedVariant;
-        }
-        catch (error: any) {
-            if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof ConflictException) {
+        } catch (error: any) {
+            if (
+                error instanceof NotFoundException ||
+                error instanceof ForbiddenException ||
+                error instanceof ConflictException ||
+                error instanceof BadRequestException
+            ) {
                 throw error;
             }
             throw new InternalServerErrorException('Failed to update variant');
