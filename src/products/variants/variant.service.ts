@@ -4,24 +4,13 @@ import { CreateVariantDto } from "./dtos/create-variant.dto";
 import type { ProductVariant } from "generated/prisma";
 import { ProductType } from "generated/prisma";
 import { UpdateVariantDto } from "./dtos/update-variant.dto";
-import { ResponseVariantDto } from "./dtos/response-variant.dto";
+
 
 @Injectable()
 export class VariantService {
     constructor(private readonly prisma: PrismaService) { }
 
-    private toResponseDto(variant: ProductVariant): ResponseVariantDto {
-        return {
-            id: variant.id,
-            name: variant.name,
-            value: variant.value,
-            stock: variant.stock,
-            createdAt: variant.createdAt,
-            updatedAt: variant.updatedAt,
-        };
-    }
-    
-    async create(createVariantDto: CreateVariantDto, userId: string, productId: string): Promise<ResponseVariantDto> {
+    async create(createVariantDto: CreateVariantDto, userId: string, productId: string): Promise<ProductVariant> {
         try {
             const vendor = await this.prisma.vendor.findUnique({
                 where: { userId: userId }
@@ -62,7 +51,7 @@ export class VariantService {
                     productId: productId
                 }
             });
-            return this.toResponseDto(variant);
+            return variant;
         }
         catch (error: any) {
             if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof ConflictException || error instanceof BadRequestException) {
@@ -72,7 +61,7 @@ export class VariantService {
         }
     }
 
-    async update(updateVariantDto: UpdateVariantDto, userId: string, productId: string, variantId: string): Promise<ResponseVariantDto> {
+    async update(updateVariantDto: UpdateVariantDto, userId: string, productId: string, variantId: string): Promise<ProductVariant> {
         try {
             const vendor = await this.prisma.vendor.findUnique({
                 where: { userId }
@@ -127,7 +116,7 @@ export class VariantService {
                     stock: updateVariantDto.stock
                 }
             });
-            return this.toResponseDto(updatedVariant);
+            return updatedVariant;
         } catch (error: any) {
             if (
                 error instanceof NotFoundException ||
