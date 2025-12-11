@@ -33,7 +33,7 @@ export class ProductsService {
                 data: {
                     name: createProductDto.name,
                     description: createProductDto.description,
-                    basePrice: createProductDto.price,
+                    basePrice: createProductDto.basePrice,
                     stock: createProductDto.stock,
                     vendorId: vendor.id,
                     categoryId: createProductDto.categoryId,
@@ -129,11 +129,11 @@ export class ProductsService {
 
             if (updateProductDto.name !== undefined) updateData.name = updateProductDto.name;
             if (updateProductDto.description !== undefined) updateData.description = updateProductDto.description;
-            if (updateProductDto.price !== undefined) {
-                if (updateProductDto.price < 0) {
+            if (updateProductDto.basePrice !== undefined) {
+                if (updateProductDto.basePrice < 0) {
                     throw new BadRequestException('Price cannot be negative');
                 }
-                updateData.price = updateProductDto.price;
+                updateData.basePrice = updateProductDto.basePrice;
             }
             if (updateProductDto.stock !== undefined) {
                 if (updateProductDto.stock < 0) {

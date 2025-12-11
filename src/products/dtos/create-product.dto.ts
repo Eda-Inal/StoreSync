@@ -1,5 +1,6 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional, Min} from "class-validator";
+import { IsNotEmpty, IsString, IsNumber, IsOptional, Min, IsEnum } from "class-validator";
 import { Type } from "class-transformer";
+import { ProductType } from "generated/prisma";
 
 export class CreateProductDto {
 
@@ -15,15 +16,20 @@ export class CreateProductDto {
     @Type(() => Number)
     @IsNumber()
     @Min(0)
-    price: number;
-    
-    @IsNotEmpty()
+    basePrice: number;
+
+    @IsOptional()
     @Type(() => Number)
     @IsNumber()
     @Min(0)
-    stock: number;
+    stock?: number;
 
     @IsOptional()
     @IsString()
     categoryId: string;
+
+    @IsNotEmpty()
+    @IsEnum(ProductType)
+    productType: ProductType;
+
 }
