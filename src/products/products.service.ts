@@ -164,11 +164,19 @@ export class ProductsService {
                 }
                 updateData.basePrice = updateProductDto.basePrice;
             }
-            if (updateProductDto.stock !== undefined) {
-                if (updateProductDto.stock < 0) {
-                    throw new BadRequestException('Stock cannot be negative');
+
+            if (product.productType === ProductType.SIMPLE) {
+                if (updateProductDto.stock !== undefined) {
+                    if (updateProductDto.stock < 0) {
+                        throw new BadRequestException('Stock cannot be negative');
+                    }
+                    updateData.stock = updateProductDto.stock;
                 }
-                updateData.stock = updateProductDto.stock;
+            }
+            else if (product.productType === ProductType.VARIANTED) {
+                if (updateProductDto.stock !== undefined) {
+                    throw new BadRequestException('Stock is not allowed for variant product');
+                }
             }
             if (updateProductDto.categoryId === null) {
                 updateData.categoryId = null;
