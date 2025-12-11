@@ -24,13 +24,14 @@ export class ProductService {
                 if (product.vendor.deletedAt !== null) {
                     return false;
                 }
-
-                if (product.category?.deletedAt !== null) {
+            
+                if (product.category && product.category.deletedAt !== null) {
                     return false;
                 }
+            
                 return true;
             });
-
+            
             const mappedProducts = filteredProducts.map((product) => {
                 const hasVariants = product.variants.length > 0;
                 const threshold = 5;
@@ -109,9 +110,9 @@ export class ProductService {
                 throw new NotFoundException('Product not found');
             }
 
-            if (product.category?.deletedAt !== null) {
+            if (product.category && product.category.deletedAt !== null) {
                 throw new NotFoundException("Product not found");
-            }
+            }            
 
 
             const threshold = 5;

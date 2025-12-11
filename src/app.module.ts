@@ -11,6 +11,7 @@ import { ProductsModule } from './products/products.module';
 import { VariantModule } from './products/variants/variant.module';
 import { ImageModule } from './products/images/image.module';
 import { CategoryModule } from './categories/category.module';
+import { ProductModule } from './public/products/product.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { CategoryModule } from './categories/category.module';
     VariantModule,
     ImageModule,
     CategoryModule,
+    ProductModule,
   ],
   controllers: [],
   providers: [],
