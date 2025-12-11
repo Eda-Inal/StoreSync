@@ -3,6 +3,8 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { CreateProductDto } from "./dtos/create-product.dto";
 import type { Product } from "generated/prisma";
 import { UpdateProductDto } from "./dtos/update-product.dto";
+import { ProductType } from "generated/prisma";
+
 @Injectable()
 export class ProductsService {
     constructor(private readonly prisma: PrismaService) { }
@@ -29,20 +31,47 @@ export class ProductsService {
                 }
             }
 
-            const product = await this.prisma.product.create({
-                data: {
-                    name: createProductDto.name,
-                    description: createProductDto.description,
-                    basePrice: createProductDto.basePrice,
-                    stock: createProductDto.stock,
-                    vendorId: vendor.id,
-                    categoryId: createProductDto.categoryId,
+            if (createProductDto.productType === ProductType.SIMPLE) {
+                if (createProductDto.stock === undefined) {
+                    throw new BadRequestException('Stock is required for simple product');
                 }
-            });
-            return product;
+                if (createProductDto.stock < 0) {
+                    throw new BadRequestException('Stock cannot be negative');
+                }
+                const product = await this.prisma.product.create({
+                    data: {
+                        name: createProductDto.name,
+                        description: createProductDto.description,
+                        basePrice: createProductDto.basePrice,
+                        stock: createProductDto.stock,
+                        vendorId: vendor.id,
+                        categoryId: createProductDto.categoryId,
+                        productType: ProductType.SIMPLE,
+                    }
+                });
+                return product;
+            }
+            if (createProductDto.productType === ProductType.VARIANTED) {
+                if (createProductDto.stock !== undefined) {
+                    throw new BadRequestException('Stock is not allowed for variant product');
+                }
+                const product = await this.prisma.product.create({
+                    data: {
+                        name: createProductDto.name,
+                        description: createProductDto.description,
+                        basePrice: createProductDto.basePrice,
+                        vendorId: vendor.id,
+                        categoryId: createProductDto.categoryId,
+                        productType: ProductType.VARIANTED,
+                        stock: 0,
+                    }
+                });
+                return product;
+            }
+            throw new BadRequestException("Invalid product type");
         }
         catch (error: any) {
-            if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+            if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof BadRequestException) {
                 throw error;
             }
             throw new InternalServerErrorException('Failed to create product');
