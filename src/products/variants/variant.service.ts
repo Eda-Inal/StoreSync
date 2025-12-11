@@ -1,7 +1,8 @@
-import { ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CreateVariantDto } from "./dtos/create-variant.dto";
 import type { ProductVariant } from "generated/prisma";
+import { ProductType } from "generated/prisma";
 import { UpdateVariantDto } from "./dtos/update-variant.dto";
 
 
@@ -33,6 +34,9 @@ export class VariantService {
             if (product.vendorId !== vendor.id) {
                 throw new ForbiddenException('Access denied');
             }
+            if (product.productType !== ProductType.VARIANTED) {
+                throw new BadRequestException("Variants are only allowed for VARIANTED products");
+            }
             const variantExists = await this.prisma.productVariant.findFirst({
                 where: { name: createVariantDto.name, value: createVariantDto.value, productId: productId }
             });
@@ -50,7 +54,7 @@ export class VariantService {
             return variant;
         }
         catch (error: any) {
-            if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof ConflictException) {
+            if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof ConflictException || error instanceof BadRequestException) {
                 throw error;
             }
             throw new InternalServerErrorException('Failed to create variant');
