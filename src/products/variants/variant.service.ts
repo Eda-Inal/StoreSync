@@ -133,7 +133,7 @@ export class VariantService {
     async delete(userId: string, productId: string, variantId: string): Promise<void> {
         try {
             const vendor = await this.prisma.vendor.findUnique({
-                where: { userId: userId }
+                where: { userId }
             });
             if (!vendor) {
                 throw new ForbiddenException('Access denied');
@@ -141,37 +141,45 @@ export class VariantService {
             if (vendor.deletedAt !== null) {
                 throw new ForbiddenException('Vendor account is inactive');
             }
+    
             const variant = await this.prisma.productVariant.findUnique({
                 where: { id: variantId }
             });
-            if (!variant) {
+            if (!variant || variant.deletedAt !== null) {
                 throw new NotFoundException('Variant not found');
             }
             if (variant.productId !== productId) {
                 throw new ForbiddenException('Access denied');
             }
+    
             const product = await this.prisma.product.findUnique({
                 where: { id: variant.productId }
             });
-            if (!product) {
-                throw new NotFoundException('Product not found');
-            }
-            if (product.deletedAt !== null) {
+            if (!product || product.deletedAt !== null) {
                 throw new NotFoundException('Product not found');
             }
             if (product.vendorId !== vendor.id) {
                 throw new ForbiddenException('Access denied');
             }
-            await this.prisma.productVariant.delete({
-                where: { id: variantId }
+    
+            if (product.productType !== ProductType.VARIANTED) {
+                throw new BadRequestException('Variants are only allowed for VARIANTED products');
+            }
+    
+            await this.prisma.productVariant.update({
+                where: { id: variantId },
+                data: { deletedAt: new Date() }
             });
-        }
-        catch (error: any) {
-            if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+    
+        } catch (error: any) {
+            if (
+                error instanceof NotFoundException ||
+                error instanceof ForbiddenException ||
+                error instanceof BadRequestException
+            ) {
                 throw error;
             }
             throw new InternalServerErrorException('Failed to delete variant');
         }
     }
-
 }
