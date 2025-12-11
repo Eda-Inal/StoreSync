@@ -33,7 +33,7 @@ export class ProductsService {
                 data: {
                     name: createProductDto.name,
                     description: createProductDto.description,
-                    price: createProductDto.price,
+                    basePrice: createProductDto.price,
                     stock: createProductDto.stock,
                     vendorId: vendor.id,
                     categoryId: createProductDto.categoryId,
