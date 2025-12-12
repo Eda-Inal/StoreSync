@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsInt } from 'class-validator';
+import { IsString, IsNotEmpty, IsInt, IsNumber, IsOptional, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 export class CreateVariantDto {
     @IsNotEmpty()
     @IsString()
@@ -8,7 +9,16 @@ export class CreateVariantDto {
     @IsString()
     value: string;
 
-    @IsNotEmpty()
+
+    @Type(() => Number)
     @IsInt()
+    @Min(0)
     stock: number;
+
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    @Min(0)
+    price?: number;
 }
