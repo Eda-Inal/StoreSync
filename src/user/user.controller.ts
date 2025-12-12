@@ -23,42 +23,32 @@ export class UserController {
        
     }
 
-    @Get()
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('ADMIN')
-    async getAll() {
-        return await this.userService.findAll();
-    }
 
-    @Get(':id')
-    @HttpCode(200)
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('USER', 'ADMIN')
-    async getOne(@Param('id') id: string, @User() user: UserPayload) {
-        if (user.role === 'USER' && user.id !== id)
-            throw new ForbiddenException();
-        return await this.userService.findOne(id);
-    }
-
-    @Patch(':id')
+    @Get('me')
     @HttpCode(200)
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('USER')
-    async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @User() user: UserPayload) {
-        if (user.id !== id) {
-            throw new ForbiddenException('You are not authorized to access this resource');
-        }
-        return await this.userService.updateService(id, updateUserDto);
+    async findMe(@User() user: UserPayload) {
+        return await this.userService.findOne(user.id);
     }
 
-    @Delete(':id')
+    @Put('me')
+    @HttpCode(200)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('USER')
+    async updateMe(
+      @Body() updateUserDto: UpdateUserDto,
+      @User() user: UserPayload,
+    ) {
+      return await this.userService.updateService(user.id, updateUserDto);
+    }
+
+    @Delete('me')
     @HttpCode(204)
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('USER')
-    async delete(@Param('id') id: string, @User() user: UserPayload) {
-        if (user.id !== id) {
-            throw new ForbiddenException('You are not authorized to access this resource');
-        }
-        await this.userService.deleteService(id);
+    async deleteMe(@User() user: UserPayload) {
+      await this.userService.deleteService(user.id);
     }
+    
 }

@@ -77,36 +77,36 @@ export class UserService {
 
     async updateService(id: string, updateUserDto: UpdateUserDto): Promise<Omit<User, 'password'>> {
         try {
-            const user = await this.prisma.user.findUnique({ where: { id } });
-            if (!user) {
-                throw new NotFoundException('User not found');
-            }
-            const dataToUpdate: { name?: string; email?: string; password?: string } = {
-                name: updateUserDto.name,
-                email: updateUserDto.email,
-            }
-            if (updateUserDto.password) {
-                dataToUpdate.password = await bcrypt.hash(updateUserDto.password, 10);
-            }
-
-            const updateUser = await this.prisma.user.update({
-                where: { id },
-                data: dataToUpdate
-            })
-            const { password, ...userWithoutPassword } = updateUser;
-            return userWithoutPassword
+          const user = await this.prisma.user.findUnique({ where: { id } });
+          if (!user) {
+            throw new NotFoundException('User not found');
+          }
+      
+          const hashedPassword = await bcrypt.hash(updateUserDto.password ?? user.password, 10);
+      
+          const updatedUser = await this.prisma.user.update({
+            where: { id },
+            data: {
+              name: updateUserDto.name,
+              email: updateUserDto.email,
+              password: hashedPassword,
+            },
+          });
+      
+          const { password, ...userWithoutPassword } = updatedUser;
+          return userWithoutPassword;
+      
+        } catch (error) {
+          if (error instanceof NotFoundException) {
+            throw error;
+          }
+          if (error.code === 'P2002') {
+            throw new ConflictException('Email already exists');
+          }
+          throw new InternalServerErrorException('Failed to update user.');
         }
-        catch (error) {
-            if (error instanceof NotFoundException) {
-                throw error;
-            }
-            if (error.code === 'P2002') {
-                throw new ConflictException('Email already exists');
-            }
-            throw new InternalServerErrorException('Failed to update user.');
-        }
-
-    }
+      }
+      
 
     async deleteService(id: string): Promise<void> {
         try {

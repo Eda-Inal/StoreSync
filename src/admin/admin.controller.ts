@@ -21,17 +21,17 @@ export class AdminController {
     }
 
 
-    @Get()
+    @Get('me')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    async findOne(@User() user: UserPayload) {
+    async findMe(@User() user: UserPayload) {
         return await this.adminService.findOne(user.id);
     }
 
-    @Put()
+    @Put('me')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
-    async update(@Body() updateAdminDto: UpdateAdminDto, @User() user: UserPayload) {
+    async updateMe(@Body() updateAdminDto: UpdateAdminDto, @User() user: UserPayload) {
         return await this.adminService.update(updateAdminDto, user.id);
     }
 }

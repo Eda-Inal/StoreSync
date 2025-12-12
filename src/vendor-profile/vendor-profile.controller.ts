@@ -24,17 +24,17 @@ export class VendorProfileController {
     return profile;
 
   }
-  @Get()
+  @Get('me')
   async findMe(@User() user: UserPayload) {
     const profile = await this.vendorProfileService.findMe(user.id);
     return profile;
   }
-  @Put()
+  @Put('me')
   async updateMe(@Body() updateVendorProfileDto: UpdateVendorProfileDto, @User() user: UserPayload) {
     const profile = await this.vendorProfileService.updateMe(updateVendorProfileDto, user.id);
     return profile;
   }
-  @Delete()
+  @Delete('me')
   @HttpCode(204)
   async deleteMe(@User() user: UserPayload) {
     await this.vendorProfileService.deleteMe(user.id);
