@@ -1,22 +1,19 @@
-export class ResponseProductDto {
+export class PublicProductDetailDto {
     id: string;
     name: string;
     description: string;
-    price: number;
+
+    minPrice: number;
+    maxPrice: number;
 
     inStock: boolean;
-    lowStock?: boolean;
 
     category: {
         id: string;
         name: string;
     } | null;
 
-    images: string[];  //urls
-    variants?: {
-        id: string;
-        name: string;   // color
-        value: string;  // red
-        inStock: boolean;
-    }[];
+    images: string[];
+
+    variants?: PublicVariantDto[];
 }
