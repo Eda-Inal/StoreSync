@@ -1,3 +1,5 @@
+import { PublicVariantDto } from "./response-variant.dto";
+
 export class PublicProductDetailDto {
     id: string;
     name: string;
