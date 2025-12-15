@@ -4,11 +4,12 @@ import { CreateVariantDto } from "./dtos/create-variant.dto";
 import type { ProductVariant } from "generated/prisma";
 import { ProductType } from "generated/prisma";
 import { UpdateVariantDto } from "./dtos/update-variant.dto";
-
+import { StockLogService } from "src/stock-log/stock-log.service";
+import { StockLogType } from "generated/prisma";
 
 @Injectable()
 export class VariantService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService, private readonly stockLogService: StockLogService) { }
 
     async create(createVariantDto: CreateVariantDto, userId: string, productId: string): Promise<ProductVariant> {
         try {
@@ -23,12 +24,12 @@ export class VariantService {
             }
 
             const product = await this.prisma.product.findUnique({
-                where: { id: productId }
+                where: {
+                    id: productId,
+                    deletedAt: null
+                }
             });
             if (!product) {
-                throw new NotFoundException('Product not found');
-            }
-            if (product.deletedAt !== null) {
                 throw new NotFoundException('Product not found');
             }
             if (product.vendorId !== vendor.id) {
@@ -38,24 +39,46 @@ export class VariantService {
                 throw new BadRequestException("Variants are only allowed for VARIANTED products");
             }
             const variantExists = await this.prisma.productVariant.findFirst({
-                where: { name: createVariantDto.name, value: createVariantDto.value, productId: productId }
+                where: {
+                    name: createVariantDto.name, value: createVariantDto.value, productId: productId,
+                    deletedAt: null
+                }
             });
             if (variantExists) {
                 throw new ConflictException('Variant already exists');
             }
+
             if (createVariantDto.price !== undefined && createVariantDto.price < 0) {
                 throw new BadRequestException('Price cannot be negative');
             }
-            const variant = await this.prisma.productVariant.create({
-                data: {
-                    name: createVariantDto.name,
-                    value: createVariantDto.value,
-                    stock: createVariantDto.stock,
-                    price: createVariantDto.price,
-                    productId: productId,
+            let stock = createVariantDto.stock;
+            if (createVariantDto.stock === undefined) {
+                stock = 0;
+            }
+            if (stock < 0) {
+                throw new BadRequestException('Stock cannot be negative');
+            }
+            const result = await this.prisma.$transaction(async (tx) => {
+                const variant = await tx.productVariant.create({
+                    data: {
+                        name: createVariantDto.name,
+                        value: createVariantDto.value,
+                        stock: stock,
+                        price: createVariantDto.price,
+                        productId: productId,
+                    }
+                });
+                if (stock > 0) {
+                    await this.stockLogService.createStockLog(tx, {
+                        productId: productId,
+                        quantity: stock,
+                        type: StockLogType.IN,
+                        variantId: variant.id,
+                    });
                 }
+                return variant;
             });
-            return variant;
+            return result;
         }
         catch (error: any) {
             if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof ConflictException || error instanceof BadRequestException) {
