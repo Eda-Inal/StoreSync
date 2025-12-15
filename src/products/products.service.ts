@@ -281,6 +281,7 @@ export class ProductsService {
             const updateData: any = {};
 
             if (updateProductDto.name !== undefined) updateData.name = updateProductDto.name;
+
             if (updateProductDto.description !== undefined) updateData.description = updateProductDto.description;
 
             if (updateProductDto.basePrice !== undefined) {
@@ -290,24 +291,12 @@ export class ProductsService {
                 updateData.basePrice = updateProductDto.basePrice;
             }
 
-            if (product.productType === ProductType.SIMPLE) {
-                if (updateProductDto.stock !== undefined) {
-                    if (updateProductDto.stock < 0) {
-                        throw new BadRequestException('Stock cannot be negative');
-                    }
-                    updateData.stock = updateProductDto.stock;
-                }
-            } else {
-                if (updateProductDto.stock !== undefined) {
-                    throw new BadRequestException('Stock is not allowed for variant product');
-                }
-            }
-
             if (updateProductDto.categoryId === null) {
                 updateData.categoryId = null;
-            } else if (typeof updateProductDto.categoryId === 'string') {
+            }
+            else if (typeof updateProductDto.categoryId === 'string') {
                 const category = await this.prisma.category.findUnique({
-                    where: { id: updateProductDto.categoryId }
+                    where: { id: updateProductDto.categoryId },
                 });
 
                 if (!category) {
@@ -319,12 +308,48 @@ export class ProductsService {
 
                 updateData.categoryId = updateProductDto.categoryId;
             }
+            let stockLog:
+                | { type: StockLogType; quantity: number }
+                | null = null;
 
-            await this.prisma.product.update({
-                where: { id: productId },
-                data: updateData
+            if (updateProductDto.stock !== undefined) {
+                if (product.productType !== ProductType.SIMPLE) {
+                    throw new BadRequestException('Stock is not allowed for variant product');
+                }
+
+                if (updateProductDto.stock < 0) {
+                    throw new BadRequestException('Stock cannot be negative');
+                }
+
+                if (updateProductDto.stock !== product.stock) {
+                    if (updateProductDto.stock > product.stock) {
+                        stockLog = {
+                            type: StockLogType.IN,
+                            quantity: updateProductDto.stock - product.stock
+                        };
+                    } else {
+                        stockLog = {
+                            type: StockLogType.OUT,
+                            quantity: product.stock - updateProductDto.stock
+                        };
+                    }
+                }
+                updateData.stock = updateProductDto.stock;
+            }
+            await this.prisma.$transaction(async (tx) => {
+
+                await tx.product.update({
+                    where: { id: productId },
+                    data: updateData
+                });
+                if (stockLog) {
+                    await this.stockLogService.createStockLog(tx, {
+                        productId: product.id,
+                        quantity: stockLog.quantity,
+                        type: stockLog.type,
+                    });
+                }
             });
-
             return await this.findOne(productId, userId);
 
         } catch (error: any) {
