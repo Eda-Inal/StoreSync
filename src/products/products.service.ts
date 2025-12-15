@@ -5,10 +5,12 @@ import { UpdateProductDto } from "./dtos/update-product.dto";
 import { ProductType } from "generated/prisma";
 import { VendorProductDetailDto } from "./dtos/response-product.dto";
 import { VendorProductListDto } from "./dtos/response-products.dto";
+import { StockLogService } from "src/stock-log/stock-log.service";
+import { StockLogType } from "generated/prisma";
 
 @Injectable()
 export class ProductsService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService, private readonly stockLogService: StockLogService) { }
     async create(createProductDto: CreateProductDto, userId: string): Promise<VendorProductDetailDto> {
         try {
             const vendor = await this.prisma.vendor.findUnique({
@@ -36,49 +38,59 @@ export class ProductsService {
             }
 
             let product;
+            await this.prisma.$transaction(async (tx) => {
 
-            if (createProductDto.productType === ProductType.SIMPLE) {
-                if (createProductDto.stock === undefined) {
-                    throw new BadRequestException('Stock is required for simple product');
-                }
-                if (createProductDto.stock < 0) {
-                    throw new BadRequestException('Stock cannot be negative');
-                }
-
-                product = await this.prisma.product.create({
-                    data: {
-                        name: createProductDto.name,
-                        description: createProductDto.description,
-                        basePrice: createProductDto.basePrice,
-                        stock: createProductDto.stock,
-                        vendorId: vendor.id,
-                        categoryId: createProductDto.categoryId,
-                        productType: ProductType.SIMPLE,
+                if (createProductDto.productType === ProductType.SIMPLE) {
+                    if (createProductDto.stock === undefined) {
+                        throw new BadRequestException('Stock is required for simple product');
                     }
-                });
-            }
+                    if (createProductDto.stock < 0) {
+                        throw new BadRequestException('Stock cannot be negative');
+                    }
 
-            else if (createProductDto.productType === ProductType.VARIANTED) {
-                if (createProductDto.stock !== undefined) {
-                    throw new BadRequestException('Stock is not allowed for variant product');
+                    product = await tx.product.create({
+                        data: {
+                            name: createProductDto.name,
+                            description: createProductDto.description,
+                            basePrice: createProductDto.basePrice,
+                            stock: createProductDto.stock,
+                            vendorId: vendor.id,
+                            categoryId: createProductDto.categoryId,
+                            productType: ProductType.SIMPLE,
+                        }
+                    });
+                    if (createProductDto.stock > 0) {
+                        await this.stockLogService.createStockLog(tx, {
+                            productId: product.id,
+                            quantity: createProductDto.stock,
+                            type: StockLogType.IN,
+                        })
+                    }
                 }
 
-                product = await this.prisma.product.create({
-                    data: {
-                        name: createProductDto.name,
-                        description: createProductDto.description,
-                        basePrice: createProductDto.basePrice,
-                        vendorId: vendor.id,
-                        categoryId: createProductDto.categoryId,
-                        productType: ProductType.VARIANTED,
-                        stock: 0,
-                    }
-                });
-            }
 
-            else {
-                throw new BadRequestException("Invalid product type");
-            }
+                else if (createProductDto.productType === ProductType.VARIANTED) {
+                    if (createProductDto.stock !== undefined) {
+                        throw new BadRequestException('Stock is not allowed for variant product');
+                    }
+
+                    product = await tx.product.create({
+                        data: {
+                            name: createProductDto.name,
+                            description: createProductDto.description,
+                            basePrice: createProductDto.basePrice,
+                            vendorId: vendor.id,
+                            categoryId: createProductDto.categoryId,
+                            productType: ProductType.VARIANTED,
+                            stock: 0,
+                        }
+                    });
+                }
+
+                else {
+                    throw new BadRequestException("Invalid product type");
+                }
+            });
 
             return await this.findOne(product.id, userId);
 
