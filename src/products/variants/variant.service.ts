@@ -120,38 +120,61 @@ export class VariantService {
             if (product.productType !== ProductType.VARIANTED) {
                 throw new BadRequestException('Variants are only allowed for VARIANTED products');
             }
-            if (updateVariantDto.name !== undefined || updateVariantDto.value !== undefined) {
-                const existingVariant = await this.prisma.productVariant.findFirst({
-                    where: {
-                        productId: variant.productId,
-                        value: updateVariantDto.value ?? variant.value,
-                        name: updateVariantDto.name ?? variant.name
-                    }
-                });
-                if (existingVariant && existingVariant.id !== variantId) {
-                    throw new ConflictException('Variant already exists');
-                }
-            }
-            if (updateVariantDto.stock !== undefined && updateVariantDto.stock < 0) {
-                throw new BadRequestException('Stock cannot be negative');
-            }
-            if (
-                updateVariantDto.price !== undefined &&
-                updateVariantDto.price !== null &&
-                updateVariantDto.price < 0
-            ) {
-                throw new BadRequestException('Price cannot be negative');
-            }
-            const updatedVariant = await this.prisma.productVariant.update({
-                where: { id: variantId },
-                data: {
-                    name: updateVariantDto.name,
+
+            const existingVariant = await this.prisma.productVariant.findFirst({
+                where: {
+                    productId: variant.productId,
                     value: updateVariantDto.value,
-                    stock: updateVariantDto.stock,
-                    price: updateVariantDto.price,
+                    name: updateVariantDto.name
                 }
             });
-            return updatedVariant;
+            if (existingVariant && existingVariant.id !== variantId) {
+                throw new ConflictException('Variant already exists');
+            }
+
+            const updateData: any = {};
+
+            updateData.name = updateVariantDto.name;
+
+            updateData.value = updateVariantDto.value;
+
+            if (updateVariantDto.price !== null && updateVariantDto.price < 0) {
+                throw new BadRequestException('Price cannot be negative');
+            }
+            updateData.price = updateVariantDto.price;
+
+            let stock = updateVariantDto.stock;
+
+            if (stock < 0) {
+                throw new BadRequestException('Stock cannot be negative');
+            }
+            updateData.stock = stock;
+
+            let stockLog: { type: StockLogType; quantity: number } | null = null;
+            if (stock !== variant.stock) {
+                if (stock > variant.stock) {
+                    stockLog = { type: StockLogType.IN, quantity: stock - variant.stock };
+                } else {
+                    stockLog = { type: StockLogType.OUT, quantity: variant.stock - stock };
+                }
+            }
+
+            const result = await this.prisma.$transaction(async (tx) => {
+                const updatedVariant = await tx.productVariant.update({
+                    where: { id: variantId },
+                    data: updateData
+                });
+                if (stockLog) {
+                    await this.stockLogService.createStockLog(tx, {
+                        productId: productId,
+                        quantity: stockLog.quantity,
+                        type: stockLog.type,
+                        variantId: variantId,
+                    });
+                }
+                return updatedVariant;
+            });
+            return result;
         } catch (error: any) {
             if (
                 error instanceof NotFoundException ||
