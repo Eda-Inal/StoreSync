@@ -11,14 +11,14 @@ export class OrdersService {
   constructor(private readonly prisma: PrismaService) { }
   async create(createOrdersDto: CreateOrdersDto, userId: string): Promise<ResponseOrdersDto> {
     try {
-  
+
       const lookup: Record<string, { productId: string; variantId: string | null; quantity: number }> = {};
       const normalizedItems: Array<{ productId: string; variantId: string | null; quantity: number }> = [];
-  
+
       for (const item of createOrdersDto.items) {
         const variantId = item.variantId ?? null;
         const key = `${item.productId}:${variantId}`;
-  
+
         if (lookup[key]) {
           lookup[key].quantity += item.quantity;
         } else {
@@ -29,17 +29,17 @@ export class OrdersService {
           };
         }
       }
-  
+
       for (const value of Object.values(lookup)) {
         normalizedItems.push(value);
       }
-  
+
       if (normalizedItems.length === 0) {
         throw new BadRequestException('Order items cannot be empty');
       }
-  
+
       const productIds = normalizedItems.map(item => item.productId);
-  
+
       const variantIds = Array.from(
         new Set(
           normalizedItems
@@ -50,9 +50,9 @@ export class OrdersService {
             .map(item => item.variantId)
         )
       );
-  
+
       const order = await this.prisma.$transaction(async (tx) => {
-  
+
         //user
         const user = await tx.user.findUnique({
           where: { id: userId },
@@ -60,7 +60,7 @@ export class OrdersService {
         if (!user) {
           throw new NotFoundException('User not found');
         }
-  
+
         //products
         const products = await tx.product.findMany({
           where: {
@@ -70,7 +70,7 @@ export class OrdersService {
         if (products.length !== productIds.length) {
           throw new NotFoundException('Some products not found');
         }
-  
+
         //variants
         let variants: ProductVariant[] = [];
         if (variantIds.length > 0) {
@@ -83,21 +83,21 @@ export class OrdersService {
             throw new NotFoundException('Some variants not found');
           }
         }
-  
+
         let lookupProducts: Record<string, Product> = {};
         for (let product of products) {
           if (!lookupProducts[product.id]) {
             lookupProducts[product.id] = product;
           }
         }
-  
+
         const lookupVariants: Record<string, ProductVariant> = {};
         for (let variant of variants) {
           if (!lookupVariants[variant.id]) {
             lookupVariants[variant.id] = variant;
           }
         }
-  
+
         //variant product matching
         for (let product of normalizedItems) {
           if (product.variantId !== null) {
@@ -107,14 +107,14 @@ export class OrdersService {
             }
           }
         }
-  
+
         //single vendor rule
         let productVendorIds = new Set(products.map(product => product.vendorId));
         if (productVendorIds.size > 1) {
           throw new BadRequestException('Multiple products with different vendors are not allowed');
         }
         const vendorId = products[0].vendorId;
-  
+
         //price snapshot
         const orderItemDrafts: {
           productId: string;
@@ -122,10 +122,10 @@ export class OrdersService {
           quantity: number;
           price: number;
         }[] = [];
-  
+
         for (let item of normalizedItems) {
           let unitPrice: number;
-  
+
           if (item.variantId !== null) {
             const variantPrice = lookupVariants[item.variantId].price;
             if (variantPrice == null) {
@@ -138,7 +138,7 @@ export class OrdersService {
             }
             unitPrice = lookupProducts[item.productId].basePrice;
           }
-  
+
           orderItemDrafts.push({
             productId: item.productId,
             variantId: item.variantId,
@@ -146,9 +146,84 @@ export class OrdersService {
             price: unitPrice,
           });
         }
-  
+        const totalPrice = orderItemDrafts.reduce((acc, item) => acc + item.price * item.quantity, 0);
+        if (totalPrice <= 0) {
+          throw new BadRequestException('Total price is not valid');
+        }
+        if (!Number.isFinite(totalPrice)) {
+          throw new BadRequestException('Total price is invalid');
+        }
+
+        normalizedItems.sort((a, b) => {
+
+          if (a.productId !== b.productId) {
+            return a.productId.localeCompare(b.productId);
+          }
+          const aVariant = a.variantId
+          const bVariant = b.variantId
+
+          if (aVariant === null && bVariant === null) {
+            return 0;
+          }
+
+          if (aVariant === null) {
+            return 1
+          }
+          if (bVariant === null) {
+            return -1;
+          }
+
+          return aVariant.localeCompare(bVariant);
+        })
+
+        for (const item of normalizedItems) {
+ 
+          //variant product
+          if (item.variantId !== null) {
+            const result = await tx.productVariant.updateMany({
+              where: {
+                id: item.variantId,
+                stock: {
+                  gte: item.quantity,
+                },
+              },
+              data: {
+                stock: {
+                  decrement: item.quantity,
+                },
+              },
+            });
+        
+            if (result.count === 0) {
+              throw new ConflictException('Insufficient variant stock');
+            }
+          }
+          //simple product
+          else {
+            const result = await tx.product.updateMany({
+              where: {
+                id: item.productId,
+                stock: {
+                  gte: item.quantity,
+                },
+              },
+              data: {
+                stock: {
+                  decrement: item.quantity,
+                },
+              },
+            });
+        
+            if (result.count === 0) {
+              throw new ConflictException('Insufficient product stock');
+            }
+          }
+        }
+        
+
+
       });
-      
+
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -161,5 +236,5 @@ export class OrdersService {
       throw new InternalServerErrorException('Failed to create order');
     }
   }
-  
+
 }
