@@ -5,10 +5,13 @@ import { ResponseOrdersDto } from "./dtos/response-orders.dto";
 import { ProductVariant } from "generated/prisma";
 import { Product } from "generated/prisma";
 import { OrderStatus } from "generated/prisma";
+import { StockLogService } from "src/stock-log/stock-log.service";
+import { StockLogType } from "generated/prisma";
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService,
+    private readonly stockLogService: StockLogService) { }
   async create(createOrdersDto: CreateOrdersDto, userId: string): Promise<ResponseOrdersDto> {
     try {
 
@@ -197,6 +200,13 @@ export class OrdersService {
             if (result.count === 0) {
               throw new ConflictException('Insufficient variant stock');
             }
+
+            await this.stockLogService.createStockLog(tx, {
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              type: StockLogType.OUT,
+            });
           }
           //simple product
           else {
@@ -217,6 +227,12 @@ export class OrdersService {
             if (result.count === 0) {
               throw new ConflictException('Insufficient product stock');
             }
+
+            await this.stockLogService.createStockLog(tx, {
+              productId: item.productId,
+              quantity: item.quantity,
+              type: StockLogType.OUT,
+            });
           }
         }
 
