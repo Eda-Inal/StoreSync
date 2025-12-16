@@ -4,7 +4,7 @@ import { CreateOrdersDto } from "./dtos/create-orders.dto";
 import { ResponseOrdersDto } from "./dtos/response-orders.dto";
 import { ProductVariant } from "generated/prisma";
 import { Product } from "generated/prisma";
-
+import { OrderStatus } from "generated/prisma";
 
 @Injectable()
 export class OrdersService {
@@ -177,7 +177,7 @@ export class OrdersService {
         })
 
         for (const item of normalizedItems) {
- 
+
           //variant product
           if (item.variantId !== null) {
             const result = await tx.productVariant.updateMany({
@@ -193,7 +193,7 @@ export class OrdersService {
                 },
               },
             });
-        
+
             if (result.count === 0) {
               throw new ConflictException('Insufficient variant stock');
             }
@@ -213,18 +213,66 @@ export class OrdersService {
                 },
               },
             });
-        
+
             if (result.count === 0) {
               throw new ConflictException('Insufficient product stock');
             }
           }
         }
-        
 
+        const order = await tx.order.create({
+          data: {
+            userId: userId,
+            vendorId: vendorId,
+            totalPrice: totalPrice,
+            status: OrderStatus.PENDING,
+            shippingAddress: createOrdersDto.shippingAddress,
+            shippingCity: createOrdersDto.shippingCity,
+            shippingCountry: createOrdersDto.shippingCountry,
+            shippingZip: createOrdersDto.shippingZip,
+          },
+        });
 
+        const orderItems = await tx.orderItem.createMany({
+          data: orderItemDrafts.map(item => ({
+            orderId: order.id,
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        });
+
+        const OrderWithItems = await tx.order.findUnique({
+          where: { id: order.id },
+          include: { items: true },
+        });
+
+        if (!OrderWithItems) {
+          throw new InternalServerErrorException('Order not found after creation');
+        }
+        const responseOrder: ResponseOrdersDto = {
+          id: OrderWithItems.id,
+          status: OrderWithItems.status,
+          totalPrice: OrderWithItems.totalPrice,
+          createdAt: OrderWithItems.createdAt,
+          shippingAddress: OrderWithItems.shippingAddress,
+          shippingCity: OrderWithItems.shippingCity,
+          shippingCountry: OrderWithItems.shippingCountry,
+          shippingZip: OrderWithItems.shippingZip,
+          items: OrderWithItems.items.map(item => ({
+            productId: item.productId,
+            variantId: item.variantId ?? undefined,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        };
+        return responseOrder;
       });
 
-    } catch (error) {
+      return order
+    }
+    catch (error) {
       if (
         error instanceof NotFoundException ||
         error instanceof ForbiddenException ||
@@ -236,5 +284,4 @@ export class OrdersService {
       throw new InternalServerErrorException('Failed to create order');
     }
   }
-
 }
