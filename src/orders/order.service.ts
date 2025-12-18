@@ -7,6 +7,9 @@ import { Product } from "generated/prisma";
 import { OrderStatus } from "generated/prisma";
 import { StockLogService } from "src/stock-log/stock-log.service";
 import { StockLogType } from "generated/prisma";
+import { CreatePaymentDto } from "./dtos/pay/create-payment.dto";
+import { PayOrderResponseDto } from "./dtos/pay/response-payment.dto";
+import { PaymentStatus } from "generated/prisma";
 
 @Injectable()
 export class OrdersService {
@@ -249,7 +252,7 @@ export class OrdersService {
           },
         });
 
-        const orderItems = await tx.orderItem.createMany({
+        await tx.orderItem.createMany({
           data: orderItemDrafts.map(item => ({
             orderId: order.id,
             productId: item.productId,
@@ -298,6 +301,83 @@ export class OrdersService {
         throw error;
       }
       throw new InternalServerErrorException('Failed to create order');
+    }
+  }
+
+  async pay(createPaymentDto: CreatePaymentDto, userId: string, orderId: string): Promise<PayOrderResponseDto> {
+    try {
+
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+      })
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+      if (order.userId !== userId) {
+        throw new ForbiddenException('You are not allowed to pay this order');
+      }
+      if (order.status === OrderStatus.PAID) {
+        throw new ConflictException('Order is already paid');
+      }
+      if (order.status !== OrderStatus.PENDING) {
+        throw new ConflictException('Order cannot be paid in its current status');
+      }
+
+      const paymentCompleted = await this.prisma.$transaction(async (tx) => {
+
+
+        const createdPayment = await tx.payment.create({
+          data: {
+            orderId: orderId,
+            amount: order.totalPrice,
+            paymentMethod: createPaymentDto.paymentMethod,
+            status: PaymentStatus.PAID,
+          },
+        });
+
+        const updateResult = await tx.order.updateMany({
+          where: {
+            id: orderId,
+            status: OrderStatus.PENDING,
+          },
+          data: {
+            status: OrderStatus.PAID,
+          },
+        });
+        if (updateResult.count === 0) {
+          throw new ConflictException('Order status has changed and cannot be paid');
+        }
+
+        return createdPayment;
+
+      });
+
+      const response: PayOrderResponseDto = {
+        order: {
+          id: order.id,
+          status: OrderStatus.PAID,
+          totalPrice: order.totalPrice,
+        },
+        payment: {
+          id: paymentCompleted.id,
+          amount: paymentCompleted.amount,
+          status: paymentCompleted.status,
+          paymentMethod: paymentCompleted.paymentMethod,
+          createdAt: paymentCompleted.createdAt,
+        },
+      };
+
+      return response;
+
+    }
+    catch (error) {
+      if (error instanceof NotFoundException
+        || error instanceof ForbiddenException
+        || error instanceof ConflictException
+        || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to pay order');
     }
   }
 }
