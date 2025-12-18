@@ -262,34 +262,35 @@ export class OrdersService {
           })),
         });
 
-        const OrderWithItems = await tx.order.findUnique({
+        const createdOrder = await tx.order.findUnique({
           where: { id: order.id },
           include: { items: true },
         });
 
-        if (!OrderWithItems) {
+        if (!createdOrder) {
           throw new InternalServerErrorException('Order not found after creation');
         }
-        const responseOrder: ResponseOrdersDto = {
-          id: OrderWithItems.id,
-          status: OrderWithItems.status,
-          totalPrice: OrderWithItems.totalPrice,
-          createdAt: OrderWithItems.createdAt,
-          shippingAddress: OrderWithItems.shippingAddress,
-          shippingCity: OrderWithItems.shippingCity,
-          shippingCountry: OrderWithItems.shippingCountry,
-          shippingZip: OrderWithItems.shippingZip,
-          items: OrderWithItems.items.map(item => ({
-            productId: item.productId,
-            variantId: item.variantId ?? undefined,
-            quantity: item.quantity,
-            price: item.price,
-          })),
-        };
-        return responseOrder;
+
+        return createdOrder;
       });
 
-      return order
+      const response: ResponseOrdersDto = {
+        id: order.id,
+        status: order.status,
+        totalPrice: order.totalPrice,
+        createdAt: order.createdAt,
+        shippingAddress: order.shippingAddress,
+        shippingCity: order.shippingCity,
+        shippingCountry: order.shippingCountry,
+        shippingZip: order.shippingZip,
+        items: order.items.map(item => ({
+          productId: item.productId,
+          variantId: item.variantId ?? undefined,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+      };
+      return response;
     }
     catch (error) {
       if (
