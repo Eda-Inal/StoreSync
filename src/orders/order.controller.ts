@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode } from "@nestjs/common";
+import { Controller, Post, Body, HttpCode, UseInterceptors } from "@nestjs/common";
 import { OrdersService } from "./order.service";
 import { JwtAuthGuard } from "src/auth/guards/jwt.guard";
 import { RolesGuard } from "src/auth/guards/roles.guard";
@@ -7,10 +7,12 @@ import { UseGuards } from "@nestjs/common";
 import { CreateOrdersDto } from "./dtos/create-orders.dto";
 import { User } from "src/common/decorators/user.decorator";
 import type { UserPayload } from "src/common/types/user-payload.type";
+import { OrdersResponseInterceptor } from "src/common/interceptors/order-response.interceptor";
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('USER')
+@UseInterceptors(OrdersResponseInterceptor)
 
 export class OrdersController {
     constructor(private readonly orderService: OrdersService) { }

@@ -13,6 +13,7 @@ import { ImageModule } from './products/images/image.module';
 import { CategoryModule } from './categories/category.module';
 import { ProductModule } from './public/products/product.module';
 import { StockLogModule } from './stock-log/stock-log.module';
+import { OrdersModule } from './orders/order.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { StockLogModule } from './stock-log/stock-log.module';
     CategoryModule,
     ProductModule,
     StockLogModule,
+    OrdersModule,
   ],
   controllers: [],
   providers: [],
